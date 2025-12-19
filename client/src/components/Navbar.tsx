@@ -1,7 +1,8 @@
 import { Link } from "wouter";
-import { ShoppingCart, Package } from "lucide-react";
+import { ShoppingCart, Package, Settings } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
+import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const sessionId = useSession();
@@ -21,16 +22,28 @@ export function Navbar() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
           <Link 
             href="/" 
             className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hidden md:block"
           >
             Shop
           </Link>
+          <Link href="/admin">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hidden sm:flex gap-2"
+              data-testid="button-admin"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden md:inline">Admin</span>
+            </Button>
+          </Link>
           <Link 
             href="/cart" 
             className="relative p-2 text-foreground hover:text-primary transition-colors"
+            data-testid="link-cart"
           >
             <ShoppingCart className="h-6 w-6" />
             {itemCount > 0 && (

@@ -8,6 +8,8 @@ import Home from "@/pages/Home";
 import ProductDetails from "@/pages/ProductDetails";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+import Admin from "@/pages/Admin";
+import AdminOrders from "@/pages/AdminOrders";
 
 function Router() {
   return (
@@ -16,6 +18,8 @@ function Router() {
       <Route path="/product/:id" component={ProductDetails} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/admin" component={Admin} />
+      <Route path="/admin/orders" component={AdminOrders} />
       <Route component={NotFound} />
     </Switch>
   );
