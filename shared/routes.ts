@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertProductSchema, insertCartItemSchema, insertOrderSchema, products, cartItems, orders } from './schema';
+import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, products, cartItems, orders, wishlistItems } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -19,6 +19,11 @@ export const api = {
     list: {
       method: 'GET' as const,
       path: '/api/products',
+      input: z.object({
+        search: z.string().optional(),
+        category: z.string().optional(),
+        sortBy: z.enum(['price-asc', 'price-desc', 'rating', 'newest']).optional(),
+      }).optional(),
       responses: {
         200: z.array(z.custom<typeof products.$inferSelect>()),
       },
@@ -74,6 +79,32 @@ export const api = {
       },
     },
   },
+  wishlist: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/wishlist/:sessionId',
+      responses: {
+        200: z.array(z.custom<typeof wishlistItems.$inferSelect & { product: typeof products.$inferSelect }>()),
+      },
+    },
+    add: {
+      method: 'POST' as const,
+      path: '/api/wishlist',
+      input: insertWishlistItemSchema,
+      responses: {
+        200: z.custom<typeof wishlistItems.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/wishlist/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
   orders: {
     create: {
       method: 'POST' as const,
@@ -82,6 +113,21 @@ export const api = {
       responses: {
         201: z.custom<typeof orders.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    list: {
+      method: 'GET' as const,
+      path: '/api/orders/:sessionId',
+      responses: {
+        200: z.array(z.custom<typeof orders.$inferSelect>()),
+      },
+    },
+    get: {
+      method: 'GET' as const,
+      path: '/api/orders/:id',
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
+        404: errorSchemas.notFound,
       },
     },
   },

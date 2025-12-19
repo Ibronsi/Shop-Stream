@@ -4,6 +4,7 @@ import {
   cartItems,
   orders,
   orderItems,
+  wishlistItems,
   type Product,
   type InsertProduct,
   type CartItem,
@@ -11,15 +12,19 @@ import {
   type Order,
   type InsertOrder,
   type InsertOrderItem,
-  type CartItemWithProduct
+  type CartItemWithProduct,
+  type WishlistItem,
+  type InsertWishlistItem,
+  type WishlistItemWithProduct
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ilike, or } from "drizzle-orm";
 
 export interface IStorage {
   // Products
-  getProducts(): Promise<Product[]>;
+  getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
+  getCategories(): Promise<string[]>;
   
   // Cart
   getCartItems(sessionId: string): Promise<CartItemWithProduct[]>;
@@ -28,13 +33,49 @@ export interface IStorage {
   removeFromCart(id: number): Promise<void>;
   clearCart(sessionId: string): Promise<void>;
   
+  // Wishlist
+  getWishlist(sessionId: string): Promise<WishlistItemWithProduct[]>;
+  addToWishlist(item: InsertWishlistItem): Promise<WishlistItem>;
+  removeFromWishlist(id: number): Promise<void>;
+  isInWishlist(sessionId: string, productId: number): Promise<boolean>;
+  
   // Orders
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  getOrders(sessionId: string): Promise<Order[]>;
+  getOrder(id: number): Promise<Order | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getProducts(): Promise<Product[]> {
-    return await db.select().from(products);
+  async getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]> {
+    let query = db.select().from(products);
+
+    if (search) {
+      query = query.where(
+        or(
+          ilike(products.name, `%${search}%`),
+          ilike(products.description, `%${search}%`)
+        )
+      );
+    }
+
+    if (category) {
+      query = query.where(eq(products.category, category));
+    }
+
+    const allProducts = await query;
+
+    // Sort after fetching
+    if (sortBy === 'price-asc') {
+      return allProducts.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    } else if (sortBy === 'price-desc') {
+      return allProducts.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    } else if (sortBy === 'rating') {
+      return allProducts.sort((a, b) => parseFloat(b.rating || '0') - parseFloat(a.rating || '0'));
+    } else if (sortBy === 'newest') {
+      return allProducts.reverse();
+    }
+
+    return allProducts;
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
@@ -47,6 +88,11 @@ export class DatabaseStorage implements IStorage {
     return newProduct;
   }
 
+  async getCategories(): Promise<string[]> {
+    const rows = await db.select({ category: products.category }).from(products).distinct();
+    return rows.map(row => row.category);
+  }
+
   async getCartItems(sessionId: string): Promise<CartItemWithProduct[]> {
     const items = await db
       .select({
@@ -57,14 +103,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cartItems.sessionId, sessionId))
       .leftJoin(products, eq(cartItems.productId, products.id));
 
-    // Filter out items where product might be null (shouldn't happen with proper FKs/logic)
     return items
       .filter((item): item is { cartItem: CartItem; product: Product } => !!item.product)
       .map(({ cartItem, product }) => ({ ...cartItem, product }));
   }
 
   async addToCart(item: InsertCartItem): Promise<CartItem> {
-    // Check if item exists in cart for this session
     const [existing] = await db
       .select()
       .from(cartItems)
@@ -103,16 +147,71 @@ export class DatabaseStorage implements IStorage {
     await db.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
   }
 
+  async getWishlist(sessionId: string): Promise<WishlistItemWithProduct[]> {
+    const items = await db
+      .select({
+        wishlistItem: wishlistItems,
+        product: products,
+      })
+      .from(wishlistItems)
+      .where(eq(wishlistItems.sessionId, sessionId))
+      .leftJoin(products, eq(wishlistItems.productId, products.id));
+
+    return items
+      .filter((item): item is { wishlistItem: WishlistItem; product: Product } => !!item.product)
+      .map(({ wishlistItem, product }) => ({ ...wishlistItem, product }));
+  }
+
+  async addToWishlist(item: InsertWishlistItem): Promise<WishlistItem> {
+    const [existing] = await db
+      .select()
+      .from(wishlistItems)
+      .where(and(
+        eq(wishlistItems.sessionId, item.sessionId),
+        eq(wishlistItems.productId, item.productId)
+      ));
+
+    if (existing) {
+      return existing;
+    }
+
+    const [newItem] = await db.insert(wishlistItems).values(item).returning();
+    return newItem;
+  }
+
+  async removeFromWishlist(id: number): Promise<void> {
+    await db.delete(wishlistItems).where(eq(wishlistItems.id, id));
+  }
+
+  async isInWishlist(sessionId: string, productId: number): Promise<boolean> {
+    const [item] = await db
+      .select()
+      .from(wishlistItems)
+      .where(and(
+        eq(wishlistItems.sessionId, sessionId),
+        eq(wishlistItems.productId, productId)
+      ));
+    return !!item;
+  }
+
   async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
     const [newOrder] = await db.insert(orders).values(order).returning();
     
-    // Insert all order items
     if (items.length > 0) {
       const itemsWithOrderId = items.map(item => ({ ...item, orderId: newOrder.id }));
       await db.insert(orderItems).values(itemsWithOrderId);
     }
 
     return newOrder;
+  }
+
+  async getOrders(sessionId: string): Promise<Order[]> {
+    return await db.select().from(orders).where(eq(orders.sessionId, sessionId));
+  }
+
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
   }
 }
 
