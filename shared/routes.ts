@@ -36,6 +36,15 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    create: {
+      method: 'POST' as const,
+      path: '/api/products',
+      input: insertProductSchema,
+      responses: {
+        201: z.custom<typeof products.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
   },
   cart: {
     list: {
@@ -128,6 +137,13 @@ export const api = {
       responses: {
         200: z.custom<typeof orders.$inferSelect>(),
         404: errorSchemas.notFound,
+      },
+    },
+    allOrders: {
+      method: 'GET' as const,
+      path: '/api/admin/orders',
+      responses: {
+        200: z.array(z.custom<typeof orders.$inferSelect>()),
       },
     },
   },

@@ -3,6 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import { desc } from "drizzle-orm";
 
 async function seedDatabase() {
   const existingProducts = await storage.getProducts();
@@ -118,6 +119,22 @@ export async function registerRoutes(
       return res.status(404).json({ message: 'Product not found' });
     }
     res.json(product);
+  });
+
+  app.post(api.products.create.path, async (req, res) => {
+    try {
+      const input = api.products.create.input.parse(req.body);
+      const product = await storage.createProduct(input);
+      res.status(201).json(product);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
   });
 
   // Cart
@@ -237,6 +254,11 @@ export async function registerRoutes(
       return res.status(404).json({ message: 'Order not found' });
     }
     res.json(order);
+  });
+
+  app.get(api.orders.allOrders.path, async (req, res) => {
+    const allOrders = await storage.getAllOrders();
+    res.json(allOrders);
   });
 
   return httpServer;
