@@ -36,6 +36,8 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   email: text("email").notNull(),
   address: text("address").notNull(),
+  paymentMethod: text("payment_method").notNull().default("delivery"),
+  paymentDetails: text("payment_details"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -51,7 +53,9 @@ export const orderItems = pgTable("order_items", {
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
-export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, status: true });
+export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, status: true }).extend({
+  paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
+});
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 
 // Types

@@ -18,6 +18,7 @@ const checkoutSchema = z.object({
   city: z.string().min(2, "City is required"),
   zipCode: z.string().min(4, "Valid ZIP code is required"),
   name: z.string().min(2, "Full name is required"),
+  paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
 });
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
@@ -35,6 +36,7 @@ export default function Checkout() {
       city: "",
       zipCode: "",
       name: "",
+      paymentMethod: "delivery",
     },
   });
 
@@ -46,11 +48,20 @@ export default function Checkout() {
   const onSubmit = (data: CheckoutForm) => {
     if (!sessionId || !cartItems || cartItems.length === 0) return;
 
+    let paymentDetails = "";
+    if (data.paymentMethod === "mynita") {
+      paymentDetails = "MyNita: 97120634";
+    } else if (data.paymentMethod === "amanata") {
+      paymentDetails = "My Amanata: 97120634";
+    }
+
     createOrder.mutate({
       sessionId,
       email: data.email,
       address: `${data.name}\n${data.address}\n${data.city}, ${data.zipCode}`,
       total: total.toString(),
+      paymentMethod: data.paymentMethod,
+      paymentDetails,
     });
   };
 
@@ -149,6 +160,39 @@ export default function Checkout() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Méthode de paiement</FormLabel>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "delivery")}>
+                          <input type="radio" checked={field.value === "delivery"} onChange={() => form.setValue("paymentMethod", "delivery")} className="cursor-pointer" />
+                          <div>
+                            <p className="font-semibold">À la réception</p>
+                            <p className="text-sm text-muted-foreground">Payer à la livraison</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "mynita")}>
+                          <input type="radio" checked={field.value === "mynita"} onChange={() => form.setValue("paymentMethod", "mynita")} className="cursor-pointer" />
+                          <div>
+                            <p className="font-semibold">MyNita</p>
+                            <p className="text-sm text-muted-foreground">Numéro: 97120634</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "amanata")}>
+                          <input type="radio" checked={field.value === "amanata"} onChange={() => form.setValue("paymentMethod", "amanata")} className="cursor-pointer" />
+                          <div>
+                            <p className="font-semibold">My Amanata</p>
+                            <p className="text-sm text-muted-foreground">Numéro: 97120634</p>
+                          </div>
+                        </div>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
                 <div className="pt-6">
                   <Button 

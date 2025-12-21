@@ -128,7 +128,12 @@ export default function AdminDashboard() {
               <tbody>
                 {stats?.recentOrders?.map((order) => (
                   <tr key={order.id} className="border-b border-border/50 hover:bg-secondary/30">
-                    <td className="py-3 px-4 font-mono text-xs">#{order.id}</td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-mono text-xs">#{order.id}</p>
+                        <p className="text-xs text-muted-foreground">{order.paymentMethod === "delivery" ? "À la réception" : order.paymentDetails}</p>
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-muted-foreground">{order.email}</td>
                     <td className="py-3 px-4 font-bold">${Number(order.total).toFixed(2)}</td>
                     <td className="py-3 px-4">
