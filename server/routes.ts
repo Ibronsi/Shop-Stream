@@ -103,6 +103,55 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
+  // Auth
+  app.post(api.auth.register.path, async (req, res) => {
+    try {
+      const input = api.auth.register.input.parse(req.body);
+      const user = await storage.registerUser(input);
+      if (!user) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      const { password, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.post(api.auth.login.path, async (req, res) => {
+    try {
+      const input = api.auth.login.input.parse(req.body);
+      const user = await storage.loginUser(input.email, input.password);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.post(api.auth.logout.path, (req, res) => {
+    res.json({ message: "Logged out" });
+  });
+
+  app.get(api.auth.me.path, (req, res) => {
+    res.json({ message: "Not authenticated" });
+  });
+
   // Products
   app.get(api.products.list.path, async (req, res) => {
     const search = req.query.search as string | undefined;

@@ -1,14 +1,29 @@
-import { Link } from "wouter";
-import { ShoppingCart, Package, Settings, Plus } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ShoppingCart, Package, Settings, Plus, LogOut } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
+import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export function Navbar() {
   const sessionId = useSession();
   const { data: cartItems } = useCart(sessionId);
+  const { data: currentUser } = useCurrentUser();
+  const logout = useLogout();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
   
   const itemCount = cartItems?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        toast({ title: "Succès", description: "Déconnexion réussie" });
+        navigate("/");
+      },
+    });
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
@@ -30,28 +45,32 @@ export function Navbar() {
             Shop
           </Link>
           <div className="flex items-center gap-1">
-            <Link href="/admin/dashboard">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hidden sm:flex gap-2"
-                data-testid="button-admin-dashboard"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden md:inline">Dashboard</span>
-              </Button>
-            </Link>
-            <Link href="/admin">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hidden sm:flex gap-2"
-                data-testid="button-admin"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden md:inline">Ajouter</span>
-              </Button>
-            </Link>
+            {currentUser && (
+              <>
+                <Link href="/admin/dashboard">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="hidden sm:flex gap-2"
+                    data-testid="button-admin-dashboard"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden md:inline">Dashboard</span>
+                  </Button>
+                </Link>
+                <Link href="/admin">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="hidden sm:flex gap-2"
+                    data-testid="button-admin"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden md:inline">Ajouter</span>
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
           <Link 
             href="/cart" 
@@ -65,6 +84,25 @@ export function Navbar() {
               </span>
             )}
           </Link>
+          {currentUser ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              disabled={logout.isPending}
+              data-testid="button-logout"
+              className="hidden sm:flex gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Déconnexion</span>
+            </Button>
+          ) : (
+            <Link href="/login">
+              <Button variant="default" size="sm" data-testid="button-login-navbar">
+                Connexion
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>

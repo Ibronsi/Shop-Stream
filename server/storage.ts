@@ -1,10 +1,13 @@
 import { db } from "./db";
 import {
+  users,
   products,
   cartItems,
   orders,
   orderItems,
   wishlistItems,
+  type User,
+  type InsertUser,
   type Product,
   type InsertProduct,
   type CartItem,
@@ -18,8 +21,15 @@ import {
   type WishlistItemWithProduct
 } from "@shared/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
+import * as bcrypt from "bcrypt";
 
 export interface IStorage {
+  // Users
+  registerUser(user: InsertUser): Promise<User | null>;
+  loginUser(email: string, password: string): Promise<User | null>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+
   // Products
   getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
@@ -61,6 +71,38 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async registerUser(user: InsertUser): Promise<User | null> {
+    const existing = await this.getUserByEmail(user.email);
+    if (existing) return null;
+
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+    const [newUser] = await db.insert(users).values({
+      ...user,
+      password: hashedPassword,
+    }).returning();
+    return newUser;
+  }
+
+  async loginUser(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) return null;
+
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
   async getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]> {
     let query = db.select().from(products);
 

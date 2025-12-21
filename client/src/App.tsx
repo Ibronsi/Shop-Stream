@@ -11,11 +11,15 @@ import Checkout from "@/pages/Checkout";
 import Admin from "@/pages/Admin";
 import AdminOrders from "@/pages/AdminOrders";
 import AdminDashboard from "@/pages/AdminDashboard";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/product/:id" component={ProductDetails} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, products, cartItems, orders, wishlistItems } from './schema';
+import { insertUserSchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, users, products, cartItems, orders, wishlistItems } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -15,6 +15,41 @@ export const errorSchemas = {
 };
 
 export const api = {
+  auth: {
+    register: {
+      method: 'POST' as const,
+      path: '/api/auth/register',
+      input: insertUserSchema,
+      responses: {
+        201: z.custom<Omit<typeof users.$inferSelect, "password">>(),
+        400: errorSchemas.validation,
+      },
+    },
+    login: {
+      method: 'POST' as const,
+      path: '/api/auth/login',
+      input: z.object({ email: z.string().email(), password: z.string() }),
+      responses: {
+        200: z.custom<Omit<typeof users.$inferSelect, "password">>(),
+        401: errorSchemas.validation,
+      },
+    },
+    logout: {
+      method: 'POST' as const,
+      path: '/api/auth/logout',
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
+    me: {
+      method: 'GET' as const,
+      path: '/api/auth/me',
+      responses: {
+        200: z.custom<Omit<typeof users.$inferSelect, "password">>(),
+        401: errorSchemas.validation,
+      },
+    },
+  },
   products: {
     list: {
       method: 'GET' as const,
