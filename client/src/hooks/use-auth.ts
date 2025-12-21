@@ -51,9 +51,15 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
-      const response = await fetch(api.auth.me.path);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        const response = await fetch(api.auth.me.path);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.message === "Not authenticated") return null;
+        return data;
+      } catch {
+        return null;
+      }
     },
   });
 }
