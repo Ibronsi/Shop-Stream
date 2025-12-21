@@ -44,6 +44,20 @@ export interface IStorage {
   getOrders(sessionId: string): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
+  
+  // Admin Stats
+  getAdminStats(): Promise<{
+    totalOrders: number;
+    totalRevenue: string;
+    totalProducts: number;
+    totalStock: number;
+    recentOrders: Order[];
+  }>;
+  
+  // Product Management
+  updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<boolean>;
+  updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -217,6 +231,43 @@ export class DatabaseStorage implements IStorage {
 
   async getAllOrders(): Promise<Order[]> {
     return await db.select().from(orders).orderBy(orders.createdAt);
+  }
+
+  async getAdminStats(): Promise<{
+    totalOrders: number;
+    totalRevenue: string;
+    totalProducts: number;
+    totalStock: number;
+    recentOrders: Order[];
+  }> {
+    const allOrders = await db.select().from(orders);
+    const allProducts = await db.select().from(products);
+    
+    const totalRevenue = allOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+    const totalStock = allProducts.reduce((sum, product) => sum + product.stock, 0);
+    
+    return {
+      totalOrders: allOrders.length,
+      totalRevenue: totalRevenue.toFixed(2),
+      totalProducts: allProducts.length,
+      totalStock,
+      recentOrders: allOrders.slice(-5).reverse(),
+    };
+  }
+
+  async updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product | undefined> {
+    const [updated] = await db.update(products).set(updates).where(eq(products.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProduct(id: number): Promise<boolean> {
+    const result = await db.delete(products).where(eq(products.id, id));
+    return result.rowCount > 0;
+  }
+
+  async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
+    const [updated] = await db.update(orders).set({ status }).where(eq(orders.id, id)).returning();
+    return updated;
   }
 }
 

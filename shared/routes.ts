@@ -147,6 +147,47 @@ export const api = {
       },
     },
   },
+  admin: {
+    stats: {
+      method: 'GET' as const,
+      path: '/api/admin/stats',
+      responses: {
+        200: z.object({
+          totalOrders: z.number(),
+          totalRevenue: z.string(),
+          totalProducts: z.number(),
+          totalStock: z.number(),
+          recentOrders: z.array(z.custom<typeof orders.$inferSelect>()),
+        }),
+      },
+    },
+    updateProduct: {
+      method: 'PATCH' as const,
+      path: '/api/admin/products/:id',
+      input: insertProductSchema.partial(),
+      responses: {
+        200: z.custom<typeof products.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    deleteProduct: {
+      method: 'DELETE' as const,
+      path: '/api/admin/products/:id',
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
+    updateOrderStatus: {
+      method: 'PATCH' as const,
+      path: '/api/admin/orders/:id',
+      input: z.object({ status: z.string() }),
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

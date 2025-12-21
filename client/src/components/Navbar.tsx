@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ShoppingCart, Package, Settings } from "lucide-react";
+import { ShoppingCart, Package, Settings, Plus } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -29,17 +29,30 @@ export function Navbar() {
           >
             Shop
           </Link>
-          <Link href="/admin">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden sm:flex gap-2"
-              data-testid="button-admin"
-            >
-              <Settings className="h-4 w-4" />
-              <span className="hidden md:inline">Admin</span>
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link href="/admin/dashboard">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden sm:flex gap-2"
+                data-testid="button-admin-dashboard"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden md:inline">Dashboard</span>
+              </Button>
+            </Link>
+            <Link href="/admin">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hidden sm:flex gap-2"
+                data-testid="button-admin"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden md:inline">Ajouter</span>
+              </Button>
+            </Link>
+          </div>
           <Link 
             href="/cart" 
             className="relative p-2 text-foreground hover:text-primary transition-colors"

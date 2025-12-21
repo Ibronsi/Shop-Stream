@@ -261,5 +261,63 @@ export async function registerRoutes(
     res.json(allOrders);
   });
 
+  // Admin Stats
+  app.get(api.admin.stats.path, async (req, res) => {
+    const stats = await storage.getAdminStats();
+    res.json(stats);
+  });
+
+  // Update Product
+  app.patch(api.admin.updateProduct.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = api.admin.updateProduct.input.parse(req.body);
+      const product = await storage.updateProduct(id, input);
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+      res.json(product);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  // Delete Product
+  app.delete(api.admin.deleteProduct.path, async (req, res) => {
+    const id = Number(req.params.id);
+    const deleted = await storage.deleteProduct(id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.status(204).send();
+  });
+
+  // Update Order Status
+  app.patch(api.admin.updateOrderStatus.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = api.admin.updateOrderStatus.input.parse(req.body);
+      const order = await storage.updateOrderStatus(id, input.status);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      res.json(order);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
   return httpServer;
 }
