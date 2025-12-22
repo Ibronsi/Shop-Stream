@@ -17,6 +17,11 @@ export default function AdminOrders() {
     return null;
   }
 
+  if (currentUser && currentUser.role !== "admin" && !userLoading) {
+    navigate("/");
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">

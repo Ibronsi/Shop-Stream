@@ -45,7 +45,7 @@ export function Navbar() {
             Shop
           </Link>
           <div className="flex items-center gap-1">
-            {currentUser && (
+            {currentUser && currentUser.role === "admin" && (
               <>
                 <Link href="/admin/dashboard">
                   <Button 

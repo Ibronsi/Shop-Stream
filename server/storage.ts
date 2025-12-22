@@ -29,6 +29,7 @@ export interface IStorage {
   loginUser(email: string, password: string): Promise<User | null>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
+  updateUserRole(id: number, role: string): Promise<User | undefined>;
 
   // Products
   getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]>;
@@ -100,6 +101,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserById(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
     return user;
   }
 

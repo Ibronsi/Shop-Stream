@@ -31,6 +31,11 @@ export default function Admin() {
     navigate("/login");
     return null;
   }
+
+  if (currentUser.role !== "admin") {
+    navigate("/");
+    return null;
+  }
   
   const [formData, setFormData] = useState({
     name: "",

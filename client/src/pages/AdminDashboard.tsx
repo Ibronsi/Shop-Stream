@@ -28,6 +28,11 @@ export default function AdminDashboard() {
     return null;
   }
 
+  if (currentUser && currentUser.role !== "admin" && !userLoading) {
+    navigate("/");
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">

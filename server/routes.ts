@@ -6,6 +6,19 @@ import { z } from "zod";
 import { desc } from "drizzle-orm";
 
 async function seedDatabase() {
+  const existingAdmin = await storage.getUserByEmail("admin@luxestore.com");
+  if (!existingAdmin) {
+    await storage.registerUser({
+      email: "admin@luxestore.com",
+      password: "admin123",
+      name: "Admin User",
+    });
+    const admin = await storage.getUserByEmail("admin@luxestore.com");
+    if (admin) {
+      await storage.updateUserRole(admin.id, "admin");
+    }
+  }
+
   const existingProducts = await storage.getProducts();
   if (existingProducts.length === 0) {
     const productsData = [
