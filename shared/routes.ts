@@ -222,6 +222,23 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    approveOrder: {
+      method: 'POST' as const,
+      path: '/api/admin/orders/:id/approve',
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    rejectOrder: {
+      method: 'POST' as const,
+      path: '/api/admin/orders/:id/reject',
+      input: z.object({ reason: z.string() }),
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
   },
 };
 

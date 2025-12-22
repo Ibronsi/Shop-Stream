@@ -403,5 +403,35 @@ export async function registerRoutes(
     }
   });
 
+  // Approve Order
+  app.post(api.admin.approveOrder.path, async (req, res) => {
+    const id = Number(req.params.id);
+    const order = await storage.updateOrderApprovalStatus(id, "approved");
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    res.json(order);
+  });
+
+  // Reject Order
+  app.post(api.admin.rejectOrder.path, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const input = z.object({ reason: z.string() }).parse(req.body);
+      const order = await storage.updateOrderApprovalStatus(id, "rejected", input.reason);
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      res.json(order);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+        });
+      }
+      throw err;
+    }
+  });
+
   return httpServer;
 }
