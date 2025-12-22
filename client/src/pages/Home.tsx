@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useProducts } from "@/hooks/use-products";
+import { useSEO } from "@/hooks/use-seo";
 import { ProductCard } from "@/components/ProductCard";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,12 @@ import { motion } from "framer-motion";
 const CATEGORIES = ["Electronics", "Fashion", "Accessories", "Photography", "Audio", "Home"];
 
 export default function Home() {
+  useSEO({
+    title: "Home",
+    description: "Discover our collection of premium, sustainably crafted products designed to elevate your everyday experience. Shop electronics, fashion, accessories and more.",
+    keywords: "luxury products, premium shopping, electronics, fashion, accessories, home goods",
+  });
+
   const { data: allProducts, isLoading, error } = useProducts();
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(500);
