@@ -1,9 +1,10 @@
 import { Navbar } from "@/components/Navbar";
 import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus } from "@/hooks/use-admin";
 import { useProducts } from "@/hooks/use-products";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Loader2, ChevronLeft, Trash2, Plus, Edit2, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -11,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const [, navigate] = useLocation();
   const { data: stats, isLoading: statsLoading } = useAdminStats();
   const { data: orders, isLoading: ordersLoading } = useAllOrders();
   const { data: products } = useProducts();
@@ -19,6 +22,11 @@ export default function AdminDashboard() {
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
   const isLoading = statsLoading || ordersLoading;
+
+  if (!currentUser && !userLoading) {
+    navigate("/login");
+    return null;
+  }
 
   if (isLoading) {
     return (

@@ -1,13 +1,21 @@
 import { Navbar } from "@/components/Navbar";
 import { useAllOrders } from "@/hooks/use-admin";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Loader2, ChevronLeft, Package } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function AdminOrders() {
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const [, navigate] = useLocation();
   const { data: orders, isLoading, error } = useAllOrders();
+
+  if (!currentUser && !userLoading) {
+    navigate("/login");
+    return null;
+  }
 
   if (isLoading) {
     return (

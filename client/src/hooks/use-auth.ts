@@ -54,9 +54,7 @@ export function useCurrentUser() {
       try {
         const response = await fetch(api.auth.me.path);
         if (!response.ok) return null;
-        const data = await response.json();
-        if (data.message === "Not authenticated") return null;
-        return data;
+        return response.json();
       } catch {
         return null;
       }

@@ -111,6 +111,7 @@ export async function registerRoutes(
       if (!user) {
         return res.status(400).json({ message: "Email already exists" });
       }
+      req.session.userId = user.id;
       const { password, ...safeUser } = user;
       res.status(201).json(safeUser);
     } catch (err) {
@@ -131,6 +132,7 @@ export async function registerRoutes(
       if (!user) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
+      req.session.userId = user.id;
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (err) {
@@ -145,11 +147,21 @@ export async function registerRoutes(
   });
 
   app.post(api.auth.logout.path, (req, res) => {
-    res.json({ message: "Logged out" });
+    req.session.destroy(() => {
+      res.json({ message: "Logged out" });
+    });
   });
 
-  app.get(api.auth.me.path, (req, res) => {
-    res.json({ message: "Not authenticated" });
+  app.get(api.auth.me.path, async (req, res) => {
+    if (!req.session.userId) {
+      return res.json(null);
+    }
+    const user = await storage.getUserById(req.session.userId);
+    if (!user) {
+      return res.json(null);
+    }
+    const { password, ...safeUser } = user;
+    res.json(safeUser);
   });
 
   // Products

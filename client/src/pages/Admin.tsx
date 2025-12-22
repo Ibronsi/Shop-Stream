@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useCreateProduct } from "@/hooks/use-admin";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { Link, useLocation } from "wouter";
 import { Loader2, Plus, ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -14,7 +15,22 @@ const CATEGORIES = ["Electronics", "Fashion", "Accessories", "Photography", "Aud
 
 export default function Admin() {
   const { toast } = useToast();
+  const { data: currentUser, isLoading } = useCurrentUser();
+  const [, navigate] = useLocation();
   const createProduct = useCreateProduct();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    navigate("/login");
+    return null;
+  }
   
   const [formData, setFormData] = useState({
     name: "",

@@ -1,4 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import ConnectPgSimple from "connect-pg-simple";
+import { Pool } from "pg";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -6,11 +9,40 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
+declare module "express-session" {
+  interface Session {
+    userId: number;
+  }
+}
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
 }
+
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const pgSession = ConnectPgSimple(session);
+
+app.use(
+  session({
+    store: new pgSession({
+      pool: pgPool,
+      tableName: "session",
+    }),
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  }),
+);
 
 app.use(
   express.json({
