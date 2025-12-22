@@ -112,8 +112,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Email already exists" });
       }
       req.session.userId = user.id;
-      const { password, ...safeUser } = user;
-      res.status(201).json(safeUser);
+      req.session.save((err) => {
+        if (err) {
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        const { password, ...safeUser } = user;
+        res.status(201).json(safeUser);
+      });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
@@ -133,8 +138,13 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Invalid email or password" });
       }
       req.session.userId = user.id;
-      const { password, ...safeUser } = user;
-      res.json(safeUser);
+      req.session.save((err) => {
+        if (err) {
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        const { password, ...safeUser } = user;
+        res.json(safeUser);
+      });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
