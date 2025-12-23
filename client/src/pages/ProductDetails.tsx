@@ -1,5 +1,6 @@
 import { useRoute } from "wouter";
 import { useProduct } from "@/hooks/use-products";
+import { useSEO } from "@/hooks/use-seo";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShoppingCart, ArrowLeft, ShieldCheck, Truck, Clock } from "lucide-react";
@@ -11,6 +12,13 @@ export default function ProductDetails() {
   const [, params] = useRoute("/product/:id");
   const id = params ? parseInt(params.id) : 0;
   const { data: product, isLoading, error } = useProduct(id);
+
+  useSEO({
+    title: product ? product.name : "Product",
+    description: product ? product.description : "View our premium products",
+    keywords: product ? `${product.name}, ${product.category}` : "products",
+    ogImage: product?.imageUrl,
+  });
   const sessionId = useSession();
   const addToCart = useAddToCart();
 

@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/Navbar";
+import { useSEO } from "@/hooks/use-seo";
 import { useCart, useUpdateCartItem, useRemoveFromCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,11 @@ import { Link } from "wouter";
 import { Loader2, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
 
 export default function Cart() {
+  useSEO({
+    title: "Shopping Cart",
+    description: "Review and manage your shopping cart. Proceed to checkout securely.",
+    keywords: "shopping cart, checkout, purchase",
+  });
   const sessionId = useSession();
   const { data: cartItems, isLoading } = useCart(sessionId);
   const updateItem = useUpdateCartItem();

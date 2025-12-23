@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/Navbar";
+import { useSEO } from "@/hooks/use-seo";
 import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus } from "@/hooks/use-admin";
 import { useProducts } from "@/hooks/use-products";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -11,6 +12,11 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
+  useSEO({
+    title: "Admin Dashboard",
+    description: "Manage products, orders, and view business statistics.",
+    keywords: "admin, dashboard, business, statistics",
+  });
   const { toast } = useToast();
   const { data: currentUser, isLoading: userLoading } = useCurrentUser();
   const [, navigate] = useLocation();

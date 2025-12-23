@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { useRegister } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useSEO } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -21,6 +22,12 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Register() {
+  useSEO({
+    title: "Register",
+    description: "Create a new account on LuxeStore to start shopping and save your preferences.",
+    keywords: "register, signup, account creation",
+  });
+
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const register = useRegister();

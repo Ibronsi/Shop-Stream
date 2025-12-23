@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { useLogin } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useSEO } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,11 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
+  useSEO({
+    title: "Login",
+    description: "Log in to your LuxeStore account to access your orders and profile.",
+    keywords: "login, account, authentication",
+  });
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const login = useLogin();

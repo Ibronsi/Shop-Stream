@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { useSEO } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,11 @@ import { motion } from "framer-motion";
 const CATEGORIES = ["Electronics", "Fashion", "Accessories", "Photography", "Audio", "Home"];
 
 export default function Admin() {
+  useSEO({
+    title: "Add Product",
+    description: "Add new products to LuxeStore admin panel.",
+    keywords: "admin, product management",
+  });
   const { toast } = useToast();
   const { data: currentUser, isLoading } = useCurrentUser();
   const [, navigate] = useLocation();

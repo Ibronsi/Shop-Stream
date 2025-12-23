@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { useSEO } from "@/hooks/use-seo";
 import { useCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
 import { useCreateOrder } from "@/hooks/use-orders";
@@ -24,6 +25,11 @@ const checkoutSchema = z.object({
 type CheckoutForm = z.infer<typeof checkoutSchema>;
 
 export default function Checkout() {
+  useSEO({
+    title: "Checkout",
+    description: "Complete your purchase securely with multiple payment options including MyNita and MyAmanata.",
+    keywords: "checkout, payment, purchase, MyNita, MyAmanata",
+  });
   const sessionId = useSession();
   const { data: cartItems } = useCart(sessionId);
   const createOrder = useCreateOrder();
