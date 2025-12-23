@@ -1,13 +1,18 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { api } from '@shared/routes';
+import { api, buildUrl } from '@shared/routes';
 import { useCurrentUser } from './use-auth';
 
 export function useMyOrders() {
   const { data: currentUser } = useCurrentUser();
   return useQuery({
-    queryKey: ['/api/users', currentUser?.id, 'orders'],
-    enabled: !!currentUser,
+    queryKey: ['/api/users/orders', currentUser?.email],
+    queryFn: async () => {
+      if (!currentUser?.email) return [];
+      const url = api.orders.userOrders.path.replace(':email', encodeURIComponent(currentUser.email));
+      return apiRequest(url, 'GET');
+    },
+    enabled: !!currentUser?.email,
   });
 }
 
@@ -24,7 +29,6 @@ export function useUpdateProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users', currentUser?.id, 'profile'] });
     },
   });
 }

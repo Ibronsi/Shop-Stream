@@ -57,7 +57,7 @@ export interface IStorage {
   getOrders(sessionId: string): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
-  getUserOrders(userId: number): Promise<Order[]>;
+  getUserOrders(email: string): Promise<Order[]>;
   updateOrderApprovalStatus(id: number, approvalStatus: string, rejectionReason?: string): Promise<Order | undefined>;
   
   // Admin Stats
@@ -353,8 +353,8 @@ export class DatabaseStorage implements IStorage {
     return !!updated;
   }
 
-  async getUserOrders(userId: number): Promise<Order[]> {
-    return await db.select().from(orders).where(eq(orders.userId, userId));
+  async getUserOrders(email: string): Promise<Order[]> {
+    return await db.select().from(orders).where(eq(orders.email, email));
   }
 }
 

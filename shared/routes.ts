@@ -183,7 +183,7 @@ export const api = {
     },
     userOrders: {
       method: 'GET' as const,
-      path: '/api/users/:userId/orders',
+      path: '/api/users/orders/by-email/:email',
       responses: {
         200: z.array(z.custom<typeof orders.$inferSelect>()),
       },

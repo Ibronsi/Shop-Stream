@@ -433,10 +433,10 @@ export async function registerRoutes(
     }
   });
 
-  // Get User Orders
+  // Get User Orders by Email
   app.get(api.orders.userOrders.path, async (req, res) => {
-    const userId = Number(req.params.userId);
-    const orders = await storage.getUserOrders(userId);
+    const email = req.params.email;
+    const orders = await storage.getUserOrders(email);
     res.json(orders);
   });
 
