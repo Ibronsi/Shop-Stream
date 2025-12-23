@@ -106,14 +106,13 @@ export function Navbar() {
               </Link>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleLogout}
                 disabled={logout.isPending}
                 data-testid="button-logout"
-                className="hidden sm:flex gap-2"
+                title="Déconnexion"
               >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden md:inline">Déconnexion</span>
+                <LogOut className="h-5 w-5" />
               </Button>
             </>
           ) : (

@@ -8,6 +8,12 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  phoneCountry: text("phone_country"),
+  city: text("city"),
+  district: text("district"),
   role: text("role").notNull().default("client"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -69,10 +75,15 @@ export const orderItems = pgTable("order_items", {
 
 // Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true }).extend({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-});
+  email: z.string().email("Email invalide"),
+  password: z.string().min(6, "Le mot de passe doit avoir au moins 6 caractères"),
+  firstName: z.string().min(2, "Le prénom doit avoir au moins 2 caractères"),
+  lastName: z.string().min(2, "Le nom doit avoir au moins 2 caractères"),
+  phone: z.string().min(8, "Le numéro de téléphone doit avoir au moins 8 chiffres"),
+  phoneCountry: z.string().min(1, "Sélectionnez un pays"),
+  city: z.string().min(2, "La ville est requise"),
+  district: z.string().min(2, "Le quartier est requis"),
+}).omit({ name: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
