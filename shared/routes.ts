@@ -181,6 +181,49 @@ export const api = {
         200: z.array(z.custom<typeof orders.$inferSelect>()),
       },
     },
+    userOrders: {
+      method: 'GET' as const,
+      path: '/api/users/:userId/orders',
+      responses: {
+        200: z.array(z.custom<typeof orders.$inferSelect>()),
+      },
+    },
+  },
+  user: {
+    getProfile: {
+      method: 'GET' as const,
+      path: '/api/users/:userId/profile',
+      responses: {
+        200: z.custom<Omit<typeof users.$inferSelect, "password">>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    updateProfile: {
+      method: 'PATCH' as const,
+      path: '/api/users/:userId/profile',
+      input: z.object({
+        name: z.string().min(2).optional(),
+        email: z.string().email().optional(),
+      }),
+      responses: {
+        200: z.custom<Omit<typeof users.$inferSelect, "password">>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+    updatePassword: {
+      method: 'PATCH' as const,
+      path: '/api/users/:userId/password',
+      input: z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(6),
+      }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
   },
   admin: {
     stats: {

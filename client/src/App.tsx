@@ -13,6 +13,8 @@ import AdminOrders from "@/pages/AdminOrders";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import MyOrders from "@/pages/MyOrders";
+import Profile from "@/pages/Profile";
 
 function Router() {
   return (
@@ -20,6 +22,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/my-orders" component={MyOrders} />
+      <Route path="/profile" component={Profile} />
       <Route path="/product/:id" component={ProductDetails} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />

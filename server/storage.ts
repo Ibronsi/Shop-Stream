@@ -30,6 +30,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  updateUserProfile(id: number, updates: { name?: string; email?: string }): Promise<User | undefined>;
+  updateUserPassword(id: number, oldPassword: string, newPassword: string): Promise<boolean>;
 
   // Products
   getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]>;
@@ -55,6 +57,7 @@ export interface IStorage {
   getOrders(sessionId: string): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
+  getUserOrders(userId: number): Promise<Order[]>;
   updateOrderApprovalStatus(id: number, approvalStatus: string, rejectionReason?: string): Promise<Order | undefined>;
   
   // Admin Stats
@@ -325,6 +328,33 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return order;
+  }
+
+  async updateUserProfile(id: number, updates: { name?: string; email?: string }): Promise<User | undefined> {
+    const [user] = await db.update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserPassword(id: number, oldPassword: string, newPassword: string): Promise<boolean> {
+    const user = await this.getUserById(id);
+    if (!user) return false;
+    
+    const validPassword = await bcrypt.compare(oldPassword, user.password);
+    if (!validPassword) return false;
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const [updated] = await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+    return !!updated;
+  }
+
+  async getUserOrders(userId: number): Promise<Order[]> {
+    return await db.select().from(orders).where(eq(orders.userId, userId));
   }
 }
 

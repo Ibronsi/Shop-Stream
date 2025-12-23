@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, Package, Settings, Plus, LogOut } from "lucide-react";
+import { ShoppingCart, Package, Settings, Plus, LogOut, User, History } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
@@ -85,17 +85,37 @@ export function Navbar() {
             )}
           </Link>
           {currentUser ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              disabled={logout.isPending}
-              data-testid="button-logout"
-              className="hidden sm:flex gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Déconnexion</span>
-            </Button>
+            <>
+              <Link href="/my-orders">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  data-testid="button-my-orders"
+                >
+                  <History className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/profile">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  data-testid="button-profile"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                data-testid="button-logout"
+                className="hidden sm:flex gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden md:inline">Déconnexion</span>
+              </Button>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="default" size="sm" data-testid="button-login-navbar">

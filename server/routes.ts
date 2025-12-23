@@ -433,5 +433,65 @@ export async function registerRoutes(
     }
   });
 
+  // Get User Orders
+  app.get(api.orders.userOrders.path, async (req, res) => {
+    const userId = Number(req.params.userId);
+    const orders = await storage.getUserOrders(userId);
+    res.json(orders);
+  });
+
+  // Get User Profile
+  app.get(api.user.getProfile.path, async (req, res) => {
+    const userId = Number(req.params.userId);
+    const user = await storage.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  // Update User Profile
+  app.patch(api.user.updateProfile.path, async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const input = api.user.updateProfile.input.parse(req.body);
+      const user = await storage.updateUserProfile(userId, input);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  // Update User Password
+  app.patch(api.user.updatePassword.path, async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const input = api.user.updatePassword.input.parse(req.body);
+      const success = await storage.updateUserPassword(userId, input.currentPassword, input.newPassword);
+      if (!success) {
+        return res.status(400).json({ message: 'Invalid password' });
+      }
+      res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+        });
+      }
+      throw err;
+    }
+  });
+
   return httpServer;
 }
