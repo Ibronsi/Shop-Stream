@@ -38,6 +38,7 @@ export interface IStorage {
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   getCategories(): Promise<string[]>;
+  decrementProductStock(productId: number, quantity: number): Promise<boolean>;
   
   // Cart
   getCartItems(sessionId: string): Promise<CartItemWithProduct[]>;
@@ -160,6 +161,17 @@ export class DatabaseStorage implements IStorage {
     return rows.map(row => row.category);
   }
 
+  async decrementProductStock(productId: number, quantity: number): Promise<boolean> {
+    const product = await this.getProduct(productId);
+    if (!product || product.stock < quantity) {
+      return false;
+    }
+    
+    const newStock = product.stock - quantity;
+    await db.update(products).set({ stock: newStock }).where(eq(products.id, productId));
+    return true;
+  }
+
   async getCartItems(sessionId: string): Promise<CartItemWithProduct[]> {
     const items = await db
       .select({
@@ -267,6 +279,11 @@ export class DatabaseStorage implements IStorage {
     if (items.length > 0) {
       const itemsWithOrderId = items.map(item => ({ ...item, orderId: newOrder.id }));
       await db.insert(orderItems).values(itemsWithOrderId);
+      
+      // Decrement stock for each product
+      for (const item of items) {
+        await this.decrementProductStock(item.productId, item.quantity);
+      }
     }
 
     return newOrder;

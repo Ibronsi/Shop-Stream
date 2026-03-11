@@ -306,6 +306,15 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Cart is empty" });
       }
 
+      // Check stock availability
+      for (const item of cartItems) {
+        if (item.product.stock < item.quantity) {
+          return res.status(400).json({ 
+            message: `Stock insuffisant pour ${item.product.name}. Disponible: ${item.product.stock}, demandé: ${item.quantity}` 
+          });
+        }
+      }
+
       const orderItems = cartItems.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
