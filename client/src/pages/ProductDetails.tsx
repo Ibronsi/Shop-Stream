@@ -76,9 +76,28 @@ export default function ProductDetails() {
             <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
               {product.name}
             </h1>
-            <p className="text-3xl font-light text-primary mb-8">
+            <p className="text-3xl font-light text-primary mb-4">
               ${product.price}
             </p>
+
+            {/* Stock Status */}
+            <div className="mb-8">
+              {product.stock > 0 ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                  <span className="text-sm font-semibold text-green-600">
+                    {product.stock} en stock
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                  <span className="text-sm font-semibold text-red-600">
+                    Rupture de stock
+                  </span>
+                </div>
+              )}
+            </div>
             
             <div className="prose prose-stone text-muted-foreground mb-10">
               <p>{product.description}</p>
@@ -87,7 +106,7 @@ export default function ProductDetails() {
             <div className="flex gap-4 mb-10">
               <Button 
                 onClick={handleAddToCart}
-                disabled={addToCart.isPending}
+                disabled={addToCart.isPending || product.stock === 0}
                 size="lg"
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-lg font-semibold rounded-xl shadow-lg shadow-primary/20"
               >
