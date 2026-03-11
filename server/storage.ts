@@ -60,6 +60,7 @@ export interface IStorage {
   getAllOrders(): Promise<Order[]>;
   getUserOrders(email: string): Promise<Order[]>;
   updateOrderApprovalStatus(id: number, approvalStatus: string, rejectionReason?: string): Promise<Order | undefined>;
+  cancelOrder(id: number): Promise<Order | undefined>;
   
   // Admin Stats
   getAdminStats(): Promise<{
@@ -372,6 +373,33 @@ export class DatabaseStorage implements IStorage {
 
   async getUserOrders(email: string): Promise<Order[]> {
     return await db.select().from(orders).where(eq(orders.email, email));
+  }
+
+  async cancelOrder(id: number): Promise<Order | undefined> {
+    const order = await this.getOrder(id);
+    if (!order || order.approvalStatus !== 'pending') {
+      return undefined;
+    }
+
+    // Get order items to restore stock
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+    
+    // Restore stock for each item
+    for (const item of items) {
+      const product = await this.getProduct(item.productId);
+      if (product) {
+        const newStock = product.stock + item.quantity;
+        await db.update(products).set({ stock: newStock }).where(eq(products.id, item.productId));
+      }
+    }
+
+    // Update order status to cancelled
+    const [updated] = await db.update(orders)
+      .set({ approvalStatus: 'cancelled' })
+      .where(eq(orders.id, id))
+      .returning();
+    
+    return updated;
   }
 }
 

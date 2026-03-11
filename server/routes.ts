@@ -502,5 +502,15 @@ export async function registerRoutes(
     }
   });
 
+  // Cancel Order
+  app.post(api.orders.cancel.path, async (req, res) => {
+    const id = Number(req.params.id);
+    const order = await storage.cancelOrder(id);
+    if (!order) {
+      return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
+    }
+    res.json(order);
+  });
+
   return httpServer;
 }

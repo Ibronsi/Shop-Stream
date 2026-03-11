@@ -2,10 +2,13 @@ import { Navbar } from "@/components/Navbar";
 import { useSEO } from "@/hooks/use-seo";
 import { useMyOrders } from "@/hooks/use-user";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { useCancelOrder } from "@/hooks/use-cancel-order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Loader2, ChevronLeft, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Loader2, ChevronLeft, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function MyOrders() {
   useSEO({
@@ -17,6 +20,25 @@ export default function MyOrders() {
   const { data: currentUser, isLoading: userLoading } = useCurrentUser();
   const { data: orders, isLoading: ordersLoading } = useMyOrders();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const cancelOrder = useCancelOrder();
+  const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
+
+  const handleCancelOrder = (orderId: number) => {
+    cancelOrder.mutate(orderId, {
+      onSuccess: () => {
+        toast({ title: "Succès", description: "Commande annulée avec succès" });
+        setConfirmCancel(null);
+      },
+      onError: () => {
+        toast({ 
+          title: "Erreur", 
+          description: "Impossible d'annuler cette commande",
+          variant: "destructive"
+        });
+      },
+    });
+  };
 
   if (!currentUser && !userLoading) {
     navigate("/login");
@@ -93,6 +115,12 @@ export default function MyOrders() {
                             <span className="text-yellow-600 font-medium">En attente</span>
                           </>
                         )}
+                        {order.approvalStatus === 'cancelled' && (
+                          <>
+                            <XCircle className="h-4 w-4 text-gray-500" />
+                            <span className="text-gray-500 font-medium">Annulée</span>
+                          </>
+                        )}
                       </div>
                       {order.rejectionReason && (
                         <p className="text-xs text-red-600">Raison: {order.rejectionReason}</p>
@@ -100,6 +128,36 @@ export default function MyOrders() {
                       <p className="text-xs text-muted-foreground">
                         Mode paiement: {order.paymentMethod === 'mynita' ? 'MyNita' : order.paymentMethod === 'amanata' ? 'MyAmanata' : 'À la livraison'}
                       </p>
+                      {order.approvalStatus === 'pending' && confirmCancel === order.id ? (
+                        <div className="flex gap-2 mt-3">
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleCancelOrder(order.id)}
+                            disabled={cancelOrder.isPending}
+                          >
+                            Confirmer
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setConfirmCancel(null)}
+                            disabled={cancelOrder.isPending}
+                          >
+                            Annuler
+                          </Button>
+                        </div>
+                      ) : order.approvalStatus === 'pending' ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setConfirmCancel(order.id)}
+                          className="mt-3 gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Annuler la commande
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

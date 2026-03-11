@@ -188,6 +188,15 @@ export const api = {
         200: z.array(z.custom<typeof orders.$inferSelect>()),
       },
     },
+    cancel: {
+      method: 'POST' as const,
+      path: '/api/orders/:id/cancel',
+      responses: {
+        200: z.custom<typeof orders.$inferSelect>(),
+        400: errorSchemas.badRequest,
+        404: errorSchemas.notFound,
+      },
+    },
   },
   user: {
     getProfile: {
