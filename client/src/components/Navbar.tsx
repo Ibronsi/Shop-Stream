@@ -26,144 +26,104 @@ export function Navbar() {
   };
 
   return (
-    <>
-      <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-primary text-primary-foreground p-2 rounded-lg transition-transform group-hover:scale-105">
-              <Package className="h-5 w-5" />
-            </div>
-            <span className="font-display font-bold text-xl tracking-tight text-foreground">
-              LuxeStore
-            </span>
-          </Link>
+    <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="bg-primary text-primary-foreground p-2 rounded-lg transition-transform group-hover:scale-105">
+            <Package className="h-5 w-5" />
+          </div>
+          <span className="font-display font-bold text-xl tracking-tight text-foreground">
+            LuxeStore
+          </span>
+        </Link>
 
-          <div className="flex items-center gap-3">
-            <Link 
-              href="/" 
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hidden md:block"
-            >
-              Shop
-            </Link>
-            <div className="flex items-center gap-1">
-              {currentUser && currentUser.role === "admin" && (
-                <>
-                  <Link href="/admin/dashboard">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="hidden sm:flex gap-2"
-                      data-testid="button-admin-dashboard"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span className="hidden md:inline">Dashboard</span>
-                    </Button>
-                  </Link>
-                  <Link href="/admin">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="hidden sm:flex gap-2"
-                      data-testid="button-admin"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span className="hidden md:inline">Ajouter</span>
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-            <Link 
-              href="/cart" 
-              className="relative p-2 text-foreground hover:text-primary transition-colors"
-              data-testid="link-cart"
-            >
-              <ShoppingCart className="h-6 w-6" />
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-xs font-bold flex items-center justify-center animate-in zoom-in duration-300">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
-            {currentUser ? (
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/" 
+            className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors hidden md:block"
+          >
+            Shop
+          </Link>
+          <div className="flex items-center gap-1">
+            {currentUser && currentUser.role === "admin" && (
               <>
-                <Link href="/my-orders">
+                <Link href="/admin/dashboard">
                   <Button 
                     variant="ghost" 
-                    size="icon"
-                    data-testid="button-my-orders"
+                    size="sm" 
+                    className="hidden sm:flex gap-2"
+                    data-testid="button-admin-dashboard"
                   >
-                    <History className="h-5 w-5" />
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden md:inline">Dashboard</span>
                   </Button>
                 </Link>
-                <Link href="/profile">
+                <Link href="/admin">
                   <Button 
                     variant="ghost" 
-                    size="icon"
-                    data-testid="button-profile"
+                    size="sm" 
+                    className="hidden sm:flex gap-2"
+                    data-testid="button-admin"
                   >
-                    <User className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden md:inline">Ajouter</span>
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleLogout}
-                  disabled={logout.isPending}
-                  data-testid="button-logout"
-                  title="Déconnexion"
-                >
-                  <LogOut className="h-5 w-5" />
-                </Button>
               </>
-            ) : (
-              <Link href="/login">
-                <Button variant="default" size="sm" data-testid="button-login-navbar">
-                  Connexion
-                </Button>
-              </Link>
             )}
           </div>
+          <Link 
+            href="/cart" 
+            className="relative p-2 text-foreground hover:text-primary transition-colors"
+            data-testid="link-cart"
+          >
+            <ShoppingCart className="h-6 w-6" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-xs font-bold flex items-center justify-center animate-in zoom-in duration-300">
+                {itemCount}
+              </span>
+            )}
+          </Link>
+          {currentUser ? (
+            <>
+              <Link href="/my-orders">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  data-testid="button-my-orders"
+                >
+                  <History className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/profile">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  data-testid="button-profile"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                data-testid="button-logout"
+                title="Déconnexion"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </>
+          ) : (
+            <Link href="/login">
+              <Button variant="default" size="sm" data-testid="button-login-navbar">
+                Connexion
+              </Button>
+            </Link>
+          )}
         </div>
-      </nav>
-
-      <footer className="border-t border-border/40 bg-muted/30 py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="font-semibold mb-3">À Propos</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/about" className="hover:text-primary transition-colors">À Propos de Nous</Link></li>
-                <li><Link href="/contact" className="hover:text-primary transition-colors">Nous Contacter</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-3">Légal</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/terms" className="hover:text-primary transition-colors">Conditions d'Utilisation</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-3">Service</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/" className="hover:text-primary transition-colors">Magasiner</Link></li>
-                <li><Link href="/my-orders" className="hover:text-primary transition-colors">Mes Commandes</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-3">Paiements</h3>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>MyNita</li>
-                <li>MyAmanata</li>
-                <li>Livraison</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-border/40 pt-6 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 LuxeStore. Tous droits réservés. | Niger</p>
-          </div>
-        </div>
-      </footer>
-    </>
+      </div>
+    </nav>
   );
 }
