@@ -1,8 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { api } from '@shared/routes';
+import { useCurrentUser } from './use-auth';
 
 export function useCancelOrder() {
+  const { data: currentUser } = useCurrentUser();
+  
   return useMutation({
     mutationFn: async (orderId: number) => {
       return apiRequest(
@@ -11,7 +14,10 @@ export function useCancelOrder() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users/orders'] });
+      // Invalidate with the same exact queryKey as useMyOrders
+      if (currentUser?.email) {
+        queryClient.invalidateQueries({ queryKey: ['/api/users/orders', currentUser.email] });
+      }
     },
   });
 }
