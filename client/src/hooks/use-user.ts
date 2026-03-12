@@ -10,7 +10,8 @@ export function useMyOrders() {
     queryFn: async () => {
       if (!currentUser?.email) return [];
       const url = api.orders.userOrders.path.replace(':email', encodeURIComponent(currentUser.email));
-      return apiRequest(url, 'GET');
+      const res = await apiRequest('GET', url);
+      return res.json();
     },
     enabled: !!currentUser?.email,
   });

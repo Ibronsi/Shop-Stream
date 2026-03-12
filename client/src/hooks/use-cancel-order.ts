@@ -9,8 +9,8 @@ export function useCancelOrder() {
   return useMutation({
     mutationFn: async (orderId: number) => {
       return apiRequest(
-        api.orders.cancel.path.replace(':id', String(orderId)),
-        'POST'
+        'POST',
+        api.orders.cancel.path.replace(':id', String(orderId))
       );
     },
     onSuccess: () => {
