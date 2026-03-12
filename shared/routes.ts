@@ -268,7 +268,7 @@ export const api = {
     updateOrderStatus: {
       method: 'PATCH' as const,
       path: '/api/admin/orders/:id',
-      input: z.object({ status: z.string() }),
+      input: z.object({ status: z.enum(['pending', 'accepted', 'preparing', 'ready', 'delivered', 'rejected']) }),
       responses: {
         200: z.custom<typeof orders.$inferSelect>(),
         404: errorSchemas.notFound,

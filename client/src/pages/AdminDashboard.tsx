@@ -5,18 +5,47 @@ import { useProducts } from "@/hooks/use-products";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useLocation } from "wouter";
-import { Loader2, ChevronLeft, Trash2, Plus, Edit2, Check, X } from "lucide-react";
+import { Loader2, ChevronLeft, Trash2, Plus, Package, ShoppingCart, TrendingUp, Layers } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+
+const STATUS_OPTIONS = [
+  { value: "pending",   label: "En attente",      color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300" },
+  { value: "accepted",  label: "Acceptée",        color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+  { value: "preparing", label: "En préparation",  color: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300" },
+  { value: "ready",     label: "Prête",           color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+  { value: "delivered", label: "Livrée",          color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
+  { value: "rejected",  label: "Rejetée",         color: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
+];
+
+const CANCELLED_STATUS = { label: "Annulée (client)", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" };
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "cancelled") {
+    return (
+      <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${CANCELLED_STATUS.color}`}>
+        {CANCELLED_STATUS.label}
+      </span>
+    );
+  }
+  const opt = STATUS_OPTIONS.find((s) => s.value === status);
+  if (!opt) return null;
+  return (
+    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${opt.color}`}>
+      {opt.label}
+    </span>
+  );
+}
 
 export default function AdminDashboard() {
   useSEO({
-    title: "Admin Dashboard",
-    description: "Manage products, orders, and view business statistics.",
-    keywords: "admin, dashboard, business, statistics",
+    title: "Dashboard Admin",
+    description: "Gérer les produits, commandes et statistiques.",
+    keywords: "admin, dashboard, statistiques",
   });
+
   const { toast } = useToast();
   const { data: currentUser, isLoading: userLoading } = useCurrentUser();
   const [, navigate] = useLocation();
@@ -25,7 +54,6 @@ export default function AdminDashboard() {
   const { data: products } = useProducts();
   const deleteProduct = useDeleteProduct();
   const updateOrderStatus = useUpdateOrderStatus();
-  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
   const isLoading = statsLoading || ordersLoading;
 
@@ -53,31 +81,28 @@ export default function AdminDashboard() {
   const handleDeleteProduct = (id: number, name: string) => {
     if (confirm(`Êtes-vous sûr de vouloir supprimer "${name}" ?`)) {
       deleteProduct.mutate(id, {
-        onSuccess: () => {
-          toast({ title: "Succès", description: "Produit supprimé" });
-        },
-        onError: () => {
-          toast({ title: "Erreur", description: "Impossible de supprimer le produit", variant: "destructive" });
-        },
+        onSuccess: () => toast({ title: "Produit supprimé" }),
+        onError: () => toast({ title: "Erreur", description: "Impossible de supprimer", variant: "destructive" }),
       });
     }
   };
 
-  const handleUpdateStatus = (id: number, status: string) => {
-    const newStatus = status === "pending" ? "completed" : "pending";
+  const handleChangeStatus = (orderId: number, newStatus: string) => {
     updateOrderStatus.mutate(
-      { id, status: newStatus },
+      { id: orderId, status: newStatus as any },
       {
         onSuccess: () => {
-          toast({ title: "Succès", description: `Commande marquée comme ${newStatus === "pending" ? "en attente" : "complétée"}` });
-          setEditingOrderId(null);
+          const opt = STATUS_OPTIONS.find((s) => s.value === newStatus);
+          toast({ title: "Statut mis à jour", description: `Commande marquée : ${opt?.label}` });
         },
-        onError: () => {
-          toast({ title: "Erreur", description: "Impossible de mettre à jour le statut", variant: "destructive" });
-        },
+        onError: () => toast({ title: "Erreur", description: "Impossible de mettre à jour le statut", variant: "destructive" }),
       }
     );
   };
+
+  const sortedOrders = [...(orders || [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,101 +120,102 @@ export default function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-4 gap-6 mb-12">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground mb-2">Total Commandes</p>
-              <p className="text-3xl font-bold text-primary">{stats?.totalOrders || 0}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground mb-2">Revenue Totale</p>
-              <p className="text-3xl font-bold text-green-600">${stats?.totalRevenue || "0.00"}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground mb-2">Produits</p>
-              <p className="text-3xl font-bold text-blue-600">{stats?.totalProducts || 0}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="p-6">
-              <p className="text-sm text-muted-foreground mb-2">Stock Total</p>
-              <p className="text-3xl font-bold text-orange-600">{stats?.totalStock || 0}</p>
-            </Card>
-          </motion.div>
+          {[
+            { label: "Total Commandes", value: stats?.totalOrders ?? 0, color: "text-primary", icon: ShoppingCart },
+            { label: "Chiffre d'affaires", value: `${Number(stats?.totalRevenue ?? 0).toLocaleString("fr-FR")} CFA`, color: "text-green-600", icon: TrendingUp },
+            { label: "Produits", value: stats?.totalProducts ?? 0, color: "text-blue-600", icon: Package },
+            { label: "Stock Total", value: stats?.totalStock ?? 0, color: "text-orange-600", icon: Layers },
+          ].map(({ label, value, color, icon: Icon }, i) => (
+            <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+              <Card className="p-6 flex items-center gap-4">
+                <div className={`p-3 rounded-xl bg-muted ${color}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Recent Orders */}
+        {/* Commandes */}
         <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-2xl font-bold">Commandes Récentes</h2>
-            <Link href="/admin/orders">
-              <Button variant="outline" size="sm">Voir tout</Button>
-            </Link>
-          </div>
+          <h2 className="font-display text-2xl font-bold mb-6">Gestion des Commandes</h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-semibold">Commande</th>
-                  <th className="text-left py-3 px-4 font-semibold">Email</th>
-                  <th className="text-left py-3 px-4 font-semibold">Montant</th>
-                  <th className="text-left py-3 px-4 font-semibold">Statut</th>
-                  <th className="text-left py-3 px-4 font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats?.recentOrders?.map((order) => (
-                  <tr key={order.id} className="border-b border-border/50 hover:bg-secondary/30">
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-mono text-xs">#{order.id}</p>
-                        <p className="text-xs text-muted-foreground">{order.paymentMethod === "delivery" ? "À la réception" : order.paymentDetails}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-muted-foreground">{order.email}</td>
-                    <td className="py-3 px-4 font-bold">${Number(order.total).toFixed(2)}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
-                        order.status === "completed" 
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                      }`}>
-                        {order.status === "pending" ? "En attente" : "Complétée"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdateStatus(order.id, order.status)}
+          <div className="space-y-4">
+            {sortedOrders.length === 0 && (
+              <Card className="p-8 text-center text-muted-foreground">Aucune commande</Card>
+            )}
+            {sortedOrders.map((order) => (
+              <Card key={order.id} className="p-5" data-testid={`card-admin-order-${order.id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <span className="font-mono font-semibold">#{order.id}</span>
+                      <StatusBadge status={order.approvalStatus} />
+                      {order.approvalStatus === "cancelled" && (
+                        <span className="text-xs text-muted-foreground italic">— client a annulé</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{order.email}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(order.createdAt).toLocaleDateString("fr-FR", {
+                        day: "numeric", month: "short", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {order.paymentMethod === "mynita"  ? "Paiement MyNita" :
+                       order.paymentMethod === "amanata" ? "Paiement MyAmanata" :
+                       "Paiement à la livraison"}
+                    </p>
+                    {order.address && (
+                      <p className="text-xs text-muted-foreground mt-1 truncate max-w-sm">
+                        {order.address}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="text-xl font-bold text-primary">
+                      {Number(order.total).toLocaleString("fr-FR")} CFA
+                    </div>
+
+                    {order.approvalStatus !== "cancelled" && (
+                      <Select
+                        value={order.approvalStatus}
+                        onValueChange={(val) => handleChangeStatus(order.id, val)}
                         disabled={updateOrderStatus.isPending}
-                        data-testid={`button-update-status-${order.id}`}
                       >
-                        {order.status === "pending" ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <SelectTrigger className="w-44 h-8 text-xs" data-testid={`select-status-${order.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
 
-        {/* Products Management */}
+        {/* Produits */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-2xl font-bold">Gestion des Produits</h2>
             <Link href="/admin">
-              <Button size="sm" className="gap-2">
+              <Button size="sm" className="gap-2" data-testid="button-add-product">
                 <Plus className="h-4 w-4" />
-                Ajouter Produit
+                Ajouter
               </Button>
             </Link>
           </div>
@@ -210,13 +236,13 @@ export default function AdminDashboard() {
                   <tr key={product.id} className="border-b border-border/50 hover:bg-secondary/30">
                     <td className="py-3 px-4 font-semibold">{product.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{product.category}</td>
-                    <td className="py-3 px-4 font-bold">${Number(product.price).toFixed(2)}</td>
+                    <td className="py-3 px-4 font-bold">{Number(product.price).toLocaleString("fr-FR")} CFA</td>
                     <td className="py-3 px-4">
-                      <span className={product.stock > 20 ? "text-green-600" : "text-orange-600"}>
-                        {product.stock} items
+                      <span className={product.stock > 5 ? "text-green-600" : "text-red-600 font-semibold"}>
+                        {product.stock} unités
                       </span>
                     </td>
-                    <td className="py-3 px-4 flex gap-2">
+                    <td className="py-3 px-4">
                       <Button
                         size="icon"
                         variant="outline"
@@ -233,13 +259,6 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="mt-12 flex gap-4 justify-center">
-          <Link href="/">
-            <Button variant="outline">Retour à l'accueil</Button>
-          </Link>
         </div>
       </main>
     </div>

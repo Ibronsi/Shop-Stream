@@ -6,9 +6,79 @@ import { useCancelOrder } from "@/hooks/use-cancel-order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Loader2, ChevronLeft, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
+import { Loader2, ChevronLeft, Clock, CheckCircle, XCircle, Package, ChefHat, Truck, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+
+const ORDER_STEPS = [
+  { key: "pending",   label: "En attente",       icon: Clock,         color: "text-yellow-500" },
+  { key: "accepted",  label: "Acceptée",          icon: CheckCircle,   color: "text-blue-500"   },
+  { key: "preparing", label: "En préparation",    icon: ChefHat,       color: "text-orange-500" },
+  { key: "ready",     label: "Prête",             icon: Package,       color: "text-purple-500" },
+  { key: "delivered", label: "Livrée",            icon: Truck,         color: "text-green-500"  },
+];
+
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: "En attente",    color: "text-yellow-700 dark:text-yellow-300", bg: "bg-yellow-100 dark:bg-yellow-900/40" },
+  accepted:  { label: "Acceptée",     color: "text-blue-700 dark:text-blue-300",    bg: "bg-blue-100 dark:bg-blue-900/40"    },
+  preparing: { label: "En préparation", color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-100 dark:bg-orange-900/40" },
+  ready:     { label: "Prête",         color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100 dark:bg-purple-900/40" },
+  delivered: { label: "Livrée",        color: "text-green-700 dark:text-green-300",  bg: "bg-green-100 dark:bg-green-900/40"  },
+  cancelled: { label: "Annulée",       color: "text-gray-600 dark:text-gray-400",    bg: "bg-gray-100 dark:bg-gray-800"        },
+  rejected:  { label: "Rejetée",      color: "text-red-700 dark:text-red-300",      bg: "bg-red-100 dark:bg-red-900/40"      },
+};
+
+function OrderTimeline({ status }: { status: string }) {
+  if (status === "cancelled" || status === "rejected") {
+    return (
+      <div className="flex items-center gap-2 mt-3">
+        <XCircle className={`h-5 w-5 ${status === "cancelled" ? "text-gray-500" : "text-red-500"}`} />
+        <span className={`text-sm font-medium ${status === "cancelled" ? "text-gray-500" : "text-red-600"}`}>
+          {status === "cancelled" ? "Commande annulée par le client" : "Commande rejetée par l'admin"}
+        </span>
+      </div>
+    );
+  }
+
+  const currentIdx = ORDER_STEPS.findIndex((s) => s.key === status);
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-0">
+        {ORDER_STEPS.map((step, idx) => {
+          const Icon = step.icon;
+          const done = idx < currentIdx;
+          const active = idx === currentIdx;
+          return (
+            <div key={step.key} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-1">
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center border-2 transition-colors ${
+                  done    ? "bg-primary border-primary" :
+                  active  ? "border-primary bg-primary/10" :
+                            "border-muted-foreground/30 bg-muted/30"
+                }`}>
+                  <Icon className={`h-4 w-4 ${
+                    done   ? "text-primary-foreground" :
+                    active ? step.color :
+                             "text-muted-foreground/40"
+                  }`} />
+                </div>
+                <span className={`text-[10px] text-center leading-tight w-14 ${
+                  active ? "font-semibold text-foreground" : done ? "text-muted-foreground" : "text-muted-foreground/40"
+                }`}>
+                  {step.label}
+                </span>
+              </div>
+              {idx < ORDER_STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 mb-5 mx-1 ${idx < currentIdx ? "bg-primary" : "bg-muted-foreground/20"}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function MyOrders() {
   useSEO({
@@ -24,17 +94,19 @@ export default function MyOrders() {
   const cancelOrder = useCancelOrder();
   const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
 
+  const canCancel = (status: string) => ["pending", "accepted"].includes(status);
+
   const handleCancelOrder = (orderId: number) => {
     cancelOrder.mutate(orderId, {
       onSuccess: () => {
-        toast({ title: "Succès", description: "Commande annulée avec succès" });
+        toast({ title: "Commande annulée", description: "Votre commande a été annulée avec succès." });
         setConfirmCancel(null);
       },
       onError: () => {
-        toast({ 
-          title: "Erreur", 
-          description: "Impossible d'annuler cette commande",
-          variant: "destructive"
+        toast({
+          title: "Erreur",
+          description: "Impossible d'annuler cette commande. Elle est peut-être déjà en préparation.",
+          variant: "destructive",
         });
       },
     });
@@ -56,113 +128,116 @@ export default function MyOrders() {
     );
   }
 
+  const sortedOrders = [...(orders || [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" data-testid="button-back">
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </Link>
           <h1 className="text-3xl font-bold">Mes Commandes</h1>
+          {sortedOrders.length > 0 && (
+            <span className="ml-auto text-sm text-muted-foreground">{sortedOrders.length} commande(s)</span>
+          )}
         </div>
 
-        {!orders || orders.length === 0 ? (
+        {sortedOrders.length === 0 ? (
           <Card className="p-8 text-center">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">Vous n'avez pas encore passé de commande</p>
             <Link href="/">
-              <Button>Commencer à acheter</Button>
+              <Button data-testid="button-start-shopping">Commencer à acheter</Button>
             </Link>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <Card key={order.id} className="p-6">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div>
-                    <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
-                    </p>
-                    <p className="text-sm mt-2">
-                      Email: <span className="font-medium">{order.email}</span>
-                    </p>
-                    <p className="text-sm">
-                      Adresse: <span className="font-medium">{order.address}, {order.city}</span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary">{order.total} CFA</div>
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        {order.approvalStatus === 'approved' && (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <span className="text-green-600 font-medium">Approuvée</span>
-                          </>
-                        )}
-                        {order.approvalStatus === 'rejected' && (
-                          <>
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span className="text-red-600 font-medium">Rejetée</span>
-                          </>
-                        )}
-                        {order.approvalStatus === 'pending' && (
-                          <>
-                            <Clock className="h-4 w-4 text-yellow-600" />
-                            <span className="text-yellow-600 font-medium">En attente</span>
-                          </>
-                        )}
-                        {order.approvalStatus === 'cancelled' && (
-                          <>
-                            <XCircle className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-500 font-medium">Annulée</span>
-                          </>
-                        )}
+          <div className="space-y-6">
+            {sortedOrders.map((order) => {
+              const statusInfo = STATUS_LABELS[order.approvalStatus] ?? STATUS_LABELS["pending"];
+              return (
+                <Card key={order.id} className="p-6" data-testid={`card-order-${order.id}`}>
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-semibold text-lg">Commande #{order.id}</h3>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusInfo.bg} ${statusInfo.color}`}
+                          data-testid={`status-order-${order.id}`}>
+                          {statusInfo.label}
+                        </span>
                       </div>
-                      {order.rejectionReason && (
-                        <p className="text-xs text-red-600">Raison: {order.rejectionReason}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Mode paiement: {order.paymentMethod === 'mynita' ? 'MyNita' : order.paymentMethod === 'amanata' ? 'MyAmanata' : 'À la livraison'}
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(order.createdAt).toLocaleDateString("fr-FR", {
+                          day: "numeric", month: "long", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
                       </p>
-                      {order.approvalStatus === 'pending' && confirmCancel === order.id ? (
-                        <div className="flex gap-2 mt-3">
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => handleCancelOrder(order.id)}
-                            disabled={cancelOrder.isPending}
-                          >
-                            Confirmer
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => setConfirmCancel(null)}
-                            disabled={cancelOrder.isPending}
-                          >
-                            Annuler
-                          </Button>
+                      <p className="text-sm mt-1">
+                        Paiement :{" "}
+                        <span className="font-medium">
+                          {order.paymentMethod === "mynita"   ? "MyNita"   :
+                           order.paymentMethod === "amanata"  ? "MyAmanata" :
+                           "À la livraison"}
+                        </span>
+                      </p>
+                      {order.rejectionReason && (
+                        <p className="text-xs text-red-600 mt-1">Raison : {order.rejectionReason}</p>
+                      )}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary">
+                        {Number(order.total).toLocaleString("fr-FR")} CFA
+                      </div>
+
+                      {canCancel(order.approvalStatus) && (
+                        <div className="mt-3">
+                          {confirmCancel === order.id ? (
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleCancelOrder(order.id)}
+                                disabled={cancelOrder.isPending}
+                                data-testid={`button-confirm-cancel-${order.id}`}
+                              >
+                                {cancelOrder.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirmer"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setConfirmCancel(null)}
+                                disabled={cancelOrder.isPending}
+                              >
+                                Retour
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setConfirmCancel(order.id)}
+                              className="gap-2"
+                              data-testid={`button-cancel-${order.id}`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Annuler la commande
+                            </Button>
+                          )}
                         </div>
-                      ) : order.approvalStatus === 'pending' ? (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setConfirmCancel(order.id)}
-                          className="mt-3 gap-2"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Annuler la commande
-                        </Button>
-                      ) : null}
+                      )}
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+
+                  <OrderTimeline status={order.approvalStatus} />
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
