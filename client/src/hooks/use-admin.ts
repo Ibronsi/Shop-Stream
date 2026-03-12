@@ -23,6 +23,9 @@ export function useAllOrders() {
       if (!response.ok) throw new Error("Failed to fetch orders");
       return response.json() as Promise<Order[]>;
     },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
   });
 }
 

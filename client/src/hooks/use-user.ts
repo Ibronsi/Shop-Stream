@@ -14,6 +14,9 @@ export function useMyOrders() {
       return res.json();
     },
     enabled: !!currentUser?.email,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
   });
 }
 
