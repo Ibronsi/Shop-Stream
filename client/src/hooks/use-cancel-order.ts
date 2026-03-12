@@ -14,10 +14,14 @@ export function useCancelOrder() {
       );
     },
     onSuccess: () => {
-      // Invalidate with the same exact queryKey as useMyOrders
+      // Invalider les commandes utilisateur
       if (currentUser?.email) {
         queryClient.invalidateQueries({ queryKey: ['/api/users/orders', currentUser.email] });
       }
+      // Invalider le cache des produits pour afficher les stocks restaurés
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
     },
   });
 }

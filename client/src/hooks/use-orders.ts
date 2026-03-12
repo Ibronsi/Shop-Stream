@@ -3,6 +3,7 @@ import { api } from "@shared/routes";
 import type { InsertOrder } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 
 export function useCreateOrder() {
   const { toast } = useToast();
@@ -23,15 +24,22 @@ export function useCreateOrder() {
       return api.orders.create.responses[201].parse(await res.json());
     },
     onSuccess: () => {
+      // Invalider le cache des produits pour afficher les nouveaux stocks
+      queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.products.get.path] });
+      // Invalider les stats admin
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
+
       toast({
-        title: "Order placed!",
-        description: "Thank you for your purchase. We've received your order.",
+        title: "Commande passée!",
+        description: "Merci pour votre achat. Votre commande a été reçue.",
       });
       setLocation("/");
     },
     onError: (error) => {
       toast({
-        title: "Order failed",
+        title: "Erreur de commande",
         description: error.message,
         variant: "destructive",
       });
