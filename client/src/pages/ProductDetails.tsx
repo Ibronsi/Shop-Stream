@@ -77,7 +77,7 @@ export default function ProductDetails() {
               {product.name}
             </h1>
             <p className="text-3xl font-light text-primary mb-4">
-              ${product.price}
+              {Number(product.price).toLocaleString("fr-FR")} CFA
             </p>
 
             {/* Stock Status */}

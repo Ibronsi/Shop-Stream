@@ -18,7 +18,8 @@ import {
   type CartItemWithProduct,
   type WishlistItem,
   type InsertWishlistItem,
-  type WishlistItemWithProduct
+  type WishlistItemWithProduct,
+  type OrderItem
 } from "@shared/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 import * as bcrypt from "bcrypt";

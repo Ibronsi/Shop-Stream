@@ -8,9 +8,9 @@ import { Loader2, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-re
 
 export default function Cart() {
   useSEO({
-    title: "Shopping Cart",
-    description: "Review and manage your shopping cart. Proceed to checkout securely.",
-    keywords: "shopping cart, checkout, purchase",
+    title: "Panier",
+    description: "Consultez et gérez votre panier. Passez à la caisse en toute sécurité.",
+    keywords: "panier, commande, achat",
   });
   const sessionId = useSession();
   const { data: cartItems, isLoading } = useCart(sessionId);
