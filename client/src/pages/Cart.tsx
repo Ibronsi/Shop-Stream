@@ -42,14 +42,14 @@ export default function Cart() {
             <ShoppingBag className="h-10 w-10 text-muted-foreground" />
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground mb-4">
-            Your cart is empty
+            Votre panier est vide
           </h1>
           <p className="text-muted-foreground max-w-md mb-8">
-            Looks like you haven't added anything to your cart yet. Browse our products to find something you love.
+            Vous n'avez encore rien ajouté à votre panier. Parcourez nos produits pour trouver ce qu'il vous faut.
           </p>
           <Link href="/">
             <Button size="lg" className="h-12 px-8 text-lg font-medium">
-              Start Shopping
+              Commencer les achats
             </Button>
           </Link>
         </div>
@@ -62,7 +62,7 @@ export default function Cart() {
       <Navbar />
       
       <main className="container mx-auto px-4 py-12">
-        <h1 className="font-display text-4xl font-bold mb-8">Shopping Cart</h1>
+        <h1 className="font-display text-4xl font-bold mb-8">Mon Panier</h1>
 
         <div className="grid lg:grid-cols-3 gap-12">
           {/* Cart Items */}
@@ -91,7 +91,7 @@ export default function Cart() {
                       <p className="text-sm text-muted-foreground">{item.product.category}</p>
                     </div>
                     <p className="font-bold text-lg text-foreground">
-                      ${Number(item.product.price) * item.quantity}
+                      {(Number(item.product.price) * item.quantity).toLocaleString("fr-FR")} CFA
                     </p>
                   </div>
 
@@ -110,6 +110,7 @@ export default function Cart() {
                           }
                         }}
                         disabled={updateItem.isPending || removeItem.isPending}
+                        data-testid={`button-decrease-${item.id}`}
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -123,6 +124,7 @@ export default function Cart() {
                           updateItem.mutate({ id: item.id, quantity: item.quantity + 1, sessionId });
                         }}
                         disabled={updateItem.isPending}
+                        data-testid={`button-increase-${item.id}`}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -134,9 +136,10 @@ export default function Cart() {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => sessionId && removeItem.mutate({ id: item.id, sessionId })}
                       disabled={removeItem.isPending}
+                      data-testid={`button-remove-${item.id}`}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
+                      Supprimer
                     </Button>
                   </div>
                 </div>
@@ -147,26 +150,26 @@ export default function Cart() {
           {/* Summary */}
           <div className="lg:col-span-1">
             <div className="bg-card rounded-2xl p-8 border border-border/50 shadow-lg sticky top-24">
-              <h2 className="font-display text-2xl font-bold mb-6">Order Summary</h2>
+              <h2 className="font-display text-2xl font-bold mb-6">Récapitulatif</h2>
               
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>Sous-total</span>
+                  <span>{total.toLocaleString("fr-FR")} CFA</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Shipping</span>
-                  <span>Free</span>
+                  <span>Livraison</span>
+                  <span className="text-primary font-medium">Gratuite</span>
                 </div>
                 <div className="border-t border-border pt-4 flex justify-between font-bold text-xl text-foreground">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{total.toLocaleString("fr-FR")} CFA</span>
                 </div>
               </div>
 
               <Link href="/checkout" className="w-full">
-                <Button size="lg" className="w-full h-14 text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
-                  Proceed to Checkout
+                <Button size="lg" className="w-full h-14 text-lg font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" data-testid="button-checkout">
+                  Passer la commande
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>

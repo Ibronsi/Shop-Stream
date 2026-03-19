@@ -23,7 +23,7 @@ export function useCreateOrder() {
       }
       return api.orders.create.responses[201].parse(await res.json());
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalider le cache des produits pour afficher les nouveaux stocks
       queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.products.get.path] });
@@ -32,10 +32,10 @@ export function useCreateOrder() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
 
       toast({
-        title: "Commande passée!",
+        title: "Commande passée !",
         description: "Merci pour votre achat. Votre commande a été reçue.",
       });
-      setLocation("/");
+      setLocation(`/order-confirmation/${data.id}`);
     },
     onError: (error) => {
       toast({

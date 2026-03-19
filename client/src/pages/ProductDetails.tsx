@@ -14,9 +14,9 @@ export default function ProductDetails() {
   const { data: product, isLoading, error } = useProduct(id);
 
   useSEO({
-    title: product ? product.name : "Product",
-    description: product ? product.description : "View our premium products",
-    keywords: product ? `${product.name}, ${product.category}` : "products",
+    title: product ? product.name : "Produit",
+    description: product ? product.description : "Découvrez nos produits premium",
+    keywords: product ? `${product.name}, ${product.category}` : "produits",
     ogImage: product?.imageUrl,
   });
   const sessionId = useSession();
@@ -42,8 +42,8 @@ export default function ProductDetails() {
   if (error || !product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <h2 className="text-2xl font-bold text-foreground">Product Not Found</h2>
-        <Link href="/" className="text-primary hover:underline">Back to Store</Link>
+        <h2 className="text-2xl font-bold text-foreground">Produit introuvable</h2>
+        <Link href="/" className="text-primary hover:underline">Retour à la boutique</Link>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export default function ProductDetails() {
       <main className="container mx-auto px-4 py-8 md:py-12">
         <Link href="/" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary mb-8 transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Browse
+          Retour
         </Link>
 
         <div className="grid md:grid-cols-2 gap-12 lg:gap-16">
@@ -109,11 +109,12 @@ export default function ProductDetails() {
                 disabled={addToCart.isPending || product.stock === 0}
                 size="lg"
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-lg font-semibold rounded-xl shadow-lg shadow-primary/20"
+                data-testid="button-add-to-cart"
               >
-                {addToCart.isPending ? "Adding..." : (
+                {addToCart.isPending ? "Ajout en cours..." : (
                   <>
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    Add to Cart
+                    Ajouter au panier
                   </>
                 )}
               </Button>
@@ -122,15 +123,15 @@ export default function ProductDetails() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 border-t border-border">
               <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
                 <Truck className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">Free Shipping</span>
+                <span className="text-sm font-semibold">Livraison gratuite</span>
               </div>
               <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
                 <ShieldCheck className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">2 Year Warranty</span>
+                <span className="text-sm font-semibold">Garantie 2 ans</span>
               </div>
               <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
                 <Clock className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">30 Day Returns</span>
+                <span className="text-sm font-semibold">Retour 30 jours</span>
               </div>
             </div>
           </div>

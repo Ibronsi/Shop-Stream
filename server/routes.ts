@@ -349,6 +349,11 @@ export async function registerRoutes(
     res.json(order);
   });
 
+  app.get('/api/orders/:id/items', async (req, res) => {
+    const items = await storage.getOrderItems(Number(req.params.id));
+    res.json(items);
+  });
+
   app.get(api.orders.allOrders.path, async (req, res) => {
     const allOrders = await storage.getAllOrders();
     res.json(allOrders);

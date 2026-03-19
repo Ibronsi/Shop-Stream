@@ -109,11 +109,20 @@ export default function AdminOrders() {
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-2 h-2 rounded-full ${
-                              order.status === "completed" ? "bg-green-500" : "bg-yellow-500"
+                              order.approvalStatus === "delivered" ? "bg-green-500" :
+                              order.approvalStatus === "cancelled" || order.approvalStatus === "rejected" ? "bg-red-500" :
+                              order.approvalStatus === "preparing" || order.approvalStatus === "ready" ? "bg-blue-500" :
+                              "bg-yellow-500"
                             }`}
                           />
                           <span className="font-semibold text-foreground capitalize">
-                            {order.status === "pending" ? "En attente" : "Complétée"}
+                            {order.approvalStatus === "pending" ? "En attente" :
+                             order.approvalStatus === "accepted" ? "Acceptée" :
+                             order.approvalStatus === "preparing" ? "En préparation" :
+                             order.approvalStatus === "ready" ? "Prête" :
+                             order.approvalStatus === "delivered" ? "Livrée" :
+                             order.approvalStatus === "cancelled" ? "Annulée" :
+                             order.approvalStatus === "rejected" ? "Rejetée" : order.approvalStatus}
                           </span>
                         </div>
                       </div>
@@ -122,7 +131,7 @@ export default function AdminOrders() {
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Montant total</p>
                         <p className="font-bold text-primary text-lg">
-                          ${Number(order.total).toFixed(2)}
+                          {Number(order.total).toLocaleString("fr-FR")} CFA
                         </p>
                       </div>
 
@@ -141,10 +150,6 @@ export default function AdminOrders() {
                       <p className="text-foreground">{order.address}</p>
                     </div>
 
-                    {/* Session ID (for reference) */}
-                    <div className="mt-4 text-xs text-muted-foreground">
-                      Session: {order.sessionId}
-                    </div>
                   </Card>
                 </motion.div>
               ))}

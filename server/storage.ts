@@ -60,6 +60,7 @@ export interface IStorage {
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
   getUserOrders(email: string): Promise<Order[]>;
+  getOrderItems(orderId: number): Promise<OrderItem[]>;
   updateOrderApprovalStatus(id: number, approvalStatus: string, rejectionReason?: string): Promise<Order | undefined>;
   cancelOrder(id: number): Promise<Order | undefined>;
   
@@ -377,6 +378,10 @@ export class DatabaseStorage implements IStorage {
 
   async getUserOrders(email: string): Promise<Order[]> {
     return await db.select().from(orders).where(eq(orders.email, email));
+  }
+
+  async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
   }
 
   async cancelOrder(id: number): Promise<Order | undefined> {

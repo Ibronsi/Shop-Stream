@@ -19,6 +19,7 @@ import Profile from "@/pages/Profile";
 import Terms from "@/pages/Terms";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
+import OrderConfirmation from "@/pages/OrderConfirmation";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/order-confirmation/:id" component={OrderConfirmation} />
       <Route path="/terms" component={Terms} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />

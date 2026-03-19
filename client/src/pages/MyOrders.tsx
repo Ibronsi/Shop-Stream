@@ -6,9 +6,10 @@ import { useCancelOrder } from "@/hooks/use-cancel-order";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Loader2, ChevronLeft, Clock, CheckCircle, XCircle, Package, ChefHat, Truck, Trash2 } from "lucide-react";
+import { Loader2, ChevronLeft, Clock, CheckCircle, XCircle, Package, ChefHat, Truck, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useOrderItems } from "@/hooks/use-order-items";
 
 const ORDER_STEPS = [
   { key: "pending",   label: "En attente",       icon: Clock,         color: "text-yellow-500" },
@@ -80,6 +81,25 @@ function OrderTimeline({ status }: { status: string }) {
   );
 }
 
+function OrderItemsList({ orderId }: { orderId: number }) {
+  const { data: items, isLoading } = useOrderItems(orderId);
+  if (isLoading) return <div className="py-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (!items || items.length === 0) return <p className="text-sm text-muted-foreground py-2">Aucun article trouvé.</p>;
+  return (
+    <div className="mt-3 space-y-2">
+      {items.map((item) => (
+        <div key={item.id} className="flex justify-between items-center text-sm py-1.5 border-b border-border/30 last:border-0">
+          <div>
+            <span className="font-medium text-foreground">Produit #{item.productId}</span>
+            <span className="text-muted-foreground ml-2">× {item.quantity}</span>
+          </div>
+          <span className="font-semibold">{(Number(item.price) * item.quantity).toLocaleString("fr-FR")} CFA</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MyOrders() {
   useSEO({
     title: "Mes Commandes",
@@ -93,6 +113,7 @@ export default function MyOrders() {
   const { toast } = useToast();
   const cancelOrder = useCancelOrder();
   const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
   const canCancel = (status: string) => ["pending", "accepted"].includes(status);
 
@@ -235,6 +256,19 @@ export default function MyOrders() {
                   </div>
 
                   <OrderTimeline status={order.approvalStatus} />
+
+                  {/* Articles de la commande */}
+                  <div className="mt-4 pt-4 border-t border-border/40">
+                    <button
+                      className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+                      onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                      data-testid={`button-toggle-items-${order.id}`}
+                    >
+                      {expandedOrder === order.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      {expandedOrder === order.id ? "Masquer les articles" : "Voir les articles"}
+                    </button>
+                    {expandedOrder === order.id && <OrderItemsList orderId={order.id} />}
+                  </div>
                 </Card>
               );
             })}

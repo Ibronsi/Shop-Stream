@@ -313,7 +313,7 @@ export default function Admin() {
                         {formData.name || "Nom du produit"}
                       </h3>
                       <span className="text-xl font-bold text-primary">
-                        ${formData.price || "0.00"}
+                        {Number(formData.price || 0).toLocaleString("fr-FR")} CFA
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground mb-4">

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useSEO } from "@/hooks/use-seo";
 import { useCart } from "@/hooks/use-cart";
@@ -14,11 +13,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Link } from "wouter";
 
 const checkoutSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  city: z.string().min(2, "City is required"),
-  zipCode: z.string().min(4, "Valid ZIP code is required"),
-  name: z.string().min(2, "Full name is required"),
+  email: z.string().email("Veuillez entrer une adresse email valide"),
+  address: z.string().min(5, "L'adresse doit contenir au moins 5 caractères"),
+  city: z.string().min(2, "La ville est obligatoire"),
+  quartier: z.string().min(2, "Le quartier est obligatoire"),
+  name: z.string().min(2, "Le nom complet est obligatoire"),
+  phone: z.string().min(8, "Le numéro de téléphone est obligatoire"),
   paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
 });
 
@@ -26,9 +26,9 @@ type CheckoutForm = z.infer<typeof checkoutSchema>;
 
 export default function Checkout() {
   useSEO({
-    title: "Checkout",
-    description: "Complete your purchase securely with multiple payment options including MyNita and MyAmanata.",
-    keywords: "checkout, payment, purchase, MyNita, MyAmanata",
+    title: "Paiement",
+    description: "Finalisez votre commande en toute sécurité avec MyNita, MyAmanata ou paiement à la livraison.",
+    keywords: "paiement, commande, MyNita, MyAmanata",
   });
   const sessionId = useSession();
   const { data: cartItems } = useCart(sessionId);
@@ -40,8 +40,9 @@ export default function Checkout() {
       email: "",
       address: "",
       city: "",
-      zipCode: "",
+      quartier: "",
       name: "",
+      phone: "",
       paymentMethod: "delivery",
     },
   });
@@ -64,7 +65,7 @@ export default function Checkout() {
     createOrder.mutate({
       sessionId,
       email: data.email,
-      address: `${data.name}\n${data.address}\n${data.city}, ${data.zipCode}`,
+      address: `${data.name}\nTél: ${data.phone}\n${data.address}, ${data.quartier}\n${data.city}`,
       total: total.toString(),
       paymentMethod: data.paymentMethod,
       paymentDetails,
@@ -76,8 +77,8 @@ export default function Checkout() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container mx-auto px-4 py-20 text-center">
-          <h2 className="text-2xl font-bold mb-4">Cart is empty</h2>
-          <Link href="/"><Button>Go Shopping</Button></Link>
+          <h2 className="text-2xl font-bold mb-4">Votre panier est vide</h2>
+          <Link href="/"><Button>Aller faire des achats</Button></Link>
         </div>
       </div>
     );
@@ -92,7 +93,7 @@ export default function Checkout() {
           
           {/* Checkout Form */}
           <div>
-            <h1 className="font-display text-3xl font-bold mb-8">Checkout</h1>
+            <h1 className="font-display text-3xl font-bold mb-8">Finaliser la commande</h1>
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -101,9 +102,23 @@ export default function Checkout() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                      <FormLabel>Nom complet</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} className="h-11 rounded-lg" />
+                        <Input placeholder="Ex: Moussa Mahamadou" {...field} className="h-11 rounded-lg" data-testid="input-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numéro de téléphone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: 97000000" type="tel" {...field} className="h-11 rounded-lg" data-testid="input-phone" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -115,9 +130,37 @@ export default function Checkout() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
+                      <FormLabel>Adresse email</FormLabel>
                       <FormControl>
-                        <Input placeholder="john@example.com" type="email" {...field} className="h-11 rounded-lg" />
+                        <Input placeholder="exemple@email.com" type="email" {...field} className="h-11 rounded-lg" data-testid="input-email" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ville</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Niamey" {...field} className="h-11 rounded-lg" data-testid="input-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="quartier"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quartier</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Plateau, Yantala, Koira Kano..." {...field} className="h-11 rounded-lg" data-testid="input-quartier" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -129,43 +172,14 @@ export default function Checkout() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Street Address</FormLabel>
+                      <FormLabel>Adresse précise / Repère</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Main St" {...field} className="h-11 rounded-lg" />
+                        <Input placeholder="Ex: Près du marché, rue 5..." {...field} className="h-11 rounded-lg" data-testid="input-address" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City</FormLabel>
-                        <FormControl>
-                          <Input placeholder="New York" {...field} className="h-11 rounded-lg" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="zipCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ZIP / Postal</FormLabel>
-                        <FormControl>
-                          <Input placeholder="10001" {...field} className="h-11 rounded-lg" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 <FormField
                   control={form.control}
@@ -175,21 +189,21 @@ export default function Checkout() {
                       <FormLabel>Méthode de paiement</FormLabel>
                       <div className="space-y-3">
                         <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "delivery")}>
-                          <input type="radio" checked={field.value === "delivery"} onChange={() => form.setValue("paymentMethod", "delivery")} className="cursor-pointer" />
+                          <input type="radio" checked={field.value === "delivery"} onChange={() => form.setValue("paymentMethod", "delivery")} className="cursor-pointer" data-testid="radio-delivery" />
                           <div>
                             <p className="font-semibold">À la réception</p>
-                            <p className="text-sm text-muted-foreground">Payer à la livraison</p>
+                            <p className="text-sm text-muted-foreground">Payer en espèces à la livraison</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "mynita")}>
-                          <input type="radio" checked={field.value === "mynita"} onChange={() => form.setValue("paymentMethod", "mynita")} className="cursor-pointer" />
+                          <input type="radio" checked={field.value === "mynita"} onChange={() => form.setValue("paymentMethod", "mynita")} className="cursor-pointer" data-testid="radio-mynita" />
                           <div>
                             <p className="font-semibold">MyNita</p>
                             <p className="text-sm text-muted-foreground">Numéro: 97120634</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30" onClick={() => form.setValue("paymentMethod", "amanata")}>
-                          <input type="radio" checked={field.value === "amanata"} onChange={() => form.setValue("paymentMethod", "amanata")} className="cursor-pointer" />
+                          <input type="radio" checked={field.value === "amanata"} onChange={() => form.setValue("paymentMethod", "amanata")} className="cursor-pointer" data-testid="radio-amanata" />
                           <div>
                             <p className="font-semibold">My Amanata</p>
                             <p className="text-sm text-muted-foreground">Numéro: 97120634</p>
@@ -205,17 +219,18 @@ export default function Checkout() {
                     type="submit" 
                     className="w-full h-14 text-lg font-semibold bg-primary hover:bg-primary/90 rounded-xl"
                     disabled={createOrder.isPending}
+                    data-testid="button-place-order"
                   >
                     {createOrder.isPending ? (
                       <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     ) : (
                       <Lock className="h-5 w-5 mr-2" />
                     )}
-                    {createOrder.isPending ? "Processing..." : `Pay $${total.toFixed(2)}`}
+                    {createOrder.isPending ? "Traitement en cours..." : `Confirmer — ${total.toLocaleString("fr-FR")} CFA`}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
                     <Lock className="h-3 w-3" />
-                    Payments are secure and encrypted
+                    Paiement sécurisé et crypté
                   </p>
                 </div>
               </form>
@@ -224,7 +239,7 @@ export default function Checkout() {
 
           {/* Order Preview */}
           <div className="bg-secondary/30 rounded-2xl p-8 h-fit border border-border/50">
-            <h2 className="font-display text-xl font-bold mb-6">Your Order</h2>
+            <h2 className="font-display text-xl font-bold mb-6">Votre Commande</h2>
             <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex gap-4 items-center">
@@ -237,10 +252,10 @@ export default function Checkout() {
                   </div>
                   <div className="flex-1 text-sm">
                     <p className="font-semibold text-foreground">{item.product.name}</p>
-                    <p className="text-muted-foreground">Qty: {item.quantity}</p>
+                    <p className="text-muted-foreground">Qté: {item.quantity}</p>
                   </div>
                   <p className="font-semibold text-sm">
-                    ${(Number(item.product.price) * item.quantity).toFixed(2)}
+                    {(Number(item.product.price) * item.quantity).toLocaleString("fr-FR")} CFA
                   </p>
                 </div>
               ))}
@@ -248,16 +263,16 @@ export default function Checkout() {
             
             <div className="border-t border-border pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>${total.toFixed(2)}</span>
+                <span className="text-muted-foreground">Sous-total</span>
+                <span>{total.toLocaleString("fr-FR")} CFA</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Shipping</span>
-                <span className="text-primary font-medium">Free</span>
+                <span className="text-muted-foreground">Livraison</span>
+                <span className="text-primary font-medium">Gratuite</span>
               </div>
               <div className="flex justify-between font-bold text-lg pt-2 text-primary">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{total.toLocaleString("fr-FR")} CFA</span>
               </div>
             </div>
           </div>
