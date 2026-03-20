@@ -51,7 +51,7 @@ export function Navbar() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="hidden sm:flex gap-2"
+                    className="flex gap-2"
                     data-testid="button-admin-dashboard"
                   >
                     <Settings className="h-4 w-4" />
@@ -62,11 +62,22 @@ export function Navbar() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="hidden sm:flex gap-2"
+                    className="flex gap-2"
                     data-testid="button-admin"
                   >
                     <Plus className="h-4 w-4" />
                     <span className="hidden md:inline">Ajouter</span>
+                  </Button>
+                </Link>
+                <Link href="/admin/orders">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex gap-2"
+                    data-testid="button-admin-orders"
+                  >
+                    <Package className="h-4 w-4" />
+                    <span className="hidden md:inline">Commandes</span>
                   </Button>
                 </Link>
               </>
