@@ -19,7 +19,7 @@ export function useRegister() {
 
 export function useLogin() {
   return useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
+    mutationFn: async (data: { email: string; password: string; sessionId?: string }) => {
       const response = await fetch(api.auth.login.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

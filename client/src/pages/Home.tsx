@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2, Filter, X, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import type { Category } from "@shared/schema";
 
-const CATEGORIES = ["Electronics", "Fashion", "Accessories", "Photography", "Audio", "Home"];
 const PRODUCTS_PER_PAGE = 12;
 
 export default function Home() {
@@ -20,6 +21,11 @@ export default function Home() {
   });
 
   const { data: allProducts, isLoading, error } = useProducts();
+  const { data: categoriesData } = useQuery<Category[]>({ queryKey: ['/api/categories'] });
+  // Use admin categories if available, otherwise derive from products
+  const CATEGORIES = categoriesData && categoriesData.length > 0
+    ? categoriesData.map(c => c.name)
+    : [...new Set((allProducts || []).map(p => p.category))].sort();
   const [search, setSearch] = useState("");
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(500000);

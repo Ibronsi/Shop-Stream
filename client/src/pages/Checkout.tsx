@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useSEO } from "@/hooks/use-seo";
 import { useCart } from "@/hooks/use-cart";
@@ -5,12 +6,14 @@ import { useSession } from "@/hooks/use-session";
 import { useCreateOrder } from "@/hooks/use-orders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, Tag, CheckCircle, XCircle } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import type { PromoCode } from "@shared/schema";
 
 const checkoutSchema = z.object({
   email: z.string().email("Veuillez entrer une adresse email valide"),
@@ -30,10 +33,17 @@ export default function Checkout() {
     description: "Finalisez votre commande en toute sécurité avec MyNita, MyAmanata ou paiement à la livraison.",
     keywords: "paiement, commande, MyNita, MyAmanata",
   });
+
+  const { toast } = useToast();
   const sessionId = useSession();
   const { data: cartItems } = useCart(sessionId);
   const createOrder = useCreateOrder();
-  
+
+  const [promoInput, setPromoInput] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
+  const [promoError, setPromoError] = useState("");
+
   const form = useForm<CheckoutForm>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
@@ -47,10 +57,51 @@ export default function Checkout() {
     },
   });
 
-  const total = cartItems?.reduce(
+  const subtotal = cartItems?.reduce(
     (acc, item) => acc + Number(item.product.price) * item.quantity,
     0
   ) ?? 0;
+
+  const discount = appliedPromo
+    ? appliedPromo.discountType === "percent"
+      ? Math.round((subtotal * Number(appliedPromo.discountValue)) / 100)
+      : Math.min(Number(appliedPromo.discountValue), subtotal)
+    : 0;
+
+  const total = Math.max(0, subtotal - discount);
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoInput.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setPromoError(err.message || "Code invalide");
+        setAppliedPromo(null);
+      } else {
+        const promo: PromoCode = await res.json();
+        setAppliedPromo(promo);
+        setPromoError("");
+        toast({ title: "Code promo appliqué !", description: `Réduction de ${promo.discountType === "percent" ? promo.discountValue + "%" : Number(promo.discountValue).toLocaleString("fr-FR") + " CFA"}` });
+      }
+    } catch {
+      setPromoError("Erreur de connexion");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError("");
+  };
 
   const onSubmit = (data: CheckoutForm) => {
     if (!sessionId || !cartItems || cartItems.length === 0) return;
@@ -69,6 +120,8 @@ export default function Checkout() {
       total: total.toString(),
       paymentMethod: data.paymentMethod,
       paymentDetails,
+      promoCode: appliedPromo?.code,
+      discount: discount > 0 ? discount.toString() : undefined,
     });
   };
 
@@ -238,41 +291,94 @@ export default function Checkout() {
           </div>
 
           {/* Order Preview */}
-          <div className="bg-secondary/30 rounded-2xl p-8 h-fit border border-border/50">
-            <h2 className="font-display text-xl font-bold mb-6">Votre Commande</h2>
-            <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-4 items-center">
-                  <div className="h-16 w-16 bg-white rounded-md overflow-hidden flex-shrink-0">
-                    <img 
-                      src={item.product.imageUrl} 
-                      alt={item.product.name} 
-                      className="w-full h-full object-cover"
-                    />
+          <div className="space-y-4">
+            <div className="bg-secondary/30 rounded-2xl p-8 border border-border/50">
+              <h2 className="font-display text-xl font-bold mb-6">Votre Commande</h2>
+              <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex gap-4 items-center">
+                    <div className="h-16 w-16 bg-white rounded-md overflow-hidden flex-shrink-0">
+                      <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 text-sm">
+                      <p className="font-semibold text-foreground">{item.product.name}</p>
+                      <p className="text-muted-foreground">Qté: {item.quantity}</p>
+                    </div>
+                    <p className="font-semibold text-sm">
+                      {(Number(item.product.price) * item.quantity).toLocaleString("fr-FR")} CFA
+                    </p>
                   </div>
-                  <div className="flex-1 text-sm">
-                    <p className="font-semibold text-foreground">{item.product.name}</p>
-                    <p className="text-muted-foreground">Qté: {item.quantity}</p>
+                ))}
+              </div>
+
+              {/* Promo Code */}
+              <div className="mb-4">
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="font-semibold text-sm">{appliedPromo.code}</span>
+                      <span className="text-xs">— {appliedPromo.discountType === "percent" ? `${appliedPromo.discountValue}%` : `${Number(appliedPromo.discountValue).toLocaleString("fr-FR")} CFA`} de réduction</span>
+                    </div>
+                    <button onClick={removePromo} className="text-green-700 dark:text-green-400 hover:text-red-500 transition-colors">
+                      <XCircle className="h-4 w-4" />
+                    </button>
                   </div>
-                  <p className="font-semibold text-sm">
-                    {(Number(item.product.price) * item.quantity).toLocaleString("fr-FR")} CFA
-                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Code promo"
+                          value={promoInput}
+                          onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleApplyPromo())}
+                          className="pl-9 h-10 text-sm"
+                          data-testid="input-promo-code"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-10 px-4 text-sm"
+                        onClick={handleApplyPromo}
+                        disabled={promoLoading || !promoInput.trim()}
+                        data-testid="button-apply-promo"
+                      >
+                        {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Appliquer"}
+                      </Button>
+                    </div>
+                    {promoError && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        {promoError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Sous-total</span>
+                  <span>{subtotal.toLocaleString("fr-FR")} CFA</span>
                 </div>
-              ))}
-            </div>
-            
-            <div className="border-t border-border pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Sous-total</span>
-                <span>{total.toLocaleString("fr-FR")} CFA</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Livraison</span>
-                <span className="text-primary font-medium">Gratuite</span>
-              </div>
-              <div className="flex justify-between font-bold text-lg pt-2 text-primary">
-                <span>Total</span>
-                <span>{total.toLocaleString("fr-FR")} CFA</span>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                    <span>Réduction ({appliedPromo?.code})</span>
+                    <span>- {discount.toLocaleString("fr-FR")} CFA</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Livraison</span>
+                  <span className="text-primary font-medium">Gratuite</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg pt-2 text-primary">
+                  <span>Total</span>
+                  <span>{total.toLocaleString("fr-FR")} CFA</span>
+                </div>
               </div>
             </div>
           </div>

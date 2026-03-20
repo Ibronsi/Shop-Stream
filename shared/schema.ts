@@ -24,6 +24,12 @@ export const session = pgTable("session", {
   expire: timestamp("expire").notNull(),
 });
 
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -41,6 +47,7 @@ export const cartItems = pgTable("cart_items", {
   productId: integer("product_id").notNull(),
   quantity: integer("quantity").notNull().default(1),
   sessionId: text("session_id").notNull(),
+  userId: integer("user_id"),
 });
 
 export const wishlistItems = pgTable("wishlist_items", {
@@ -61,6 +68,8 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").notNull().default("delivery"),
   paymentDetails: text("payment_details"),
   rejectionReason: text("rejection_reason"),
+  promoCode: text("promo_code"),
+  discount: numeric("discount").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -71,6 +80,18 @@ export const orderItems = pgTable("order_items", {
   productId: integer("product_id").notNull(),
   quantity: integer("quantity").notNull(),
   price: numeric("price").notNull(),
+});
+
+export const promoCodes = pgTable("promo_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type").notNull().default("percent"), // 'percent' | 'fixed'
+  discountValue: numeric("discount_value").notNull(),
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Schemas
@@ -89,8 +110,16 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: tru
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true, status: true, approvalStatus: true, rejectionReason: true }).extend({
   paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
+  promoCode: z.string().optional(),
+  discount: z.string().optional(),
 });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
+export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, createdAt: true, uses: true }).extend({
+  discountType: z.enum(["percent", "fixed"]),
+  discountValue: z.string().min(1),
+  maxUses: z.number().optional(),
+});
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -105,6 +134,10 @@ export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 
 // API Types
 export type CartItemWithProduct = CartItem & { product: Product };

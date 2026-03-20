@@ -2,6 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { useLogin } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useSEO } from "@/hooks/use-seo";
+import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -23,12 +24,13 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   useSEO({
     title: "Login",
-    description: "Log in to your LuxeStore account to access your orders and profile.",
-    keywords: "login, account, authentication",
+    description: "Connectez-vous à votre compte pour accéder à vos commandes et profil.",
+    keywords: "connexion, compte, authentification",
   });
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const login = useLogin();
+  const sessionId = useSession();
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -36,7 +38,7 @@ export default function Login() {
   });
 
   const onSubmit = (data: LoginForm) => {
-    login.mutate(data, {
+    login.mutate({ ...data, sessionId }, {
       onSuccess: () => {
         toast({ title: "Succès", description: "Connexion réussie" });
         navigate("/");

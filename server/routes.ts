@@ -150,6 +150,11 @@ export async function registerRoutes(
       if (!user) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
+      // Merge session cart with user account
+      const sessionId = req.body.sessionId as string | undefined;
+      if (sessionId) {
+        await storage.mergeCartOnLogin(sessionId, user.id);
+      }
       req.session.userId = user.id;
       req.session.save((err) => {
         if (err) {
@@ -223,14 +228,16 @@ export async function registerRoutes(
 
   // Cart
   app.get(api.cart.list.path, async (req, res) => {
-    const items = await storage.getCartItems(req.params.sessionId);
+    const userId = req.session.userId;
+    const items = await storage.getCartItems(req.params.sessionId, userId);
     res.json(items);
   });
 
   app.post(api.cart.add.path, async (req, res) => {
     try {
       const input = api.cart.add.input.parse(req.body);
-      const item = await storage.addToCart(input);
+      const userId = req.session.userId;
+      const item = await storage.addToCart({ ...input, userId });
       res.json(item);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -299,7 +306,7 @@ export async function registerRoutes(
   // Orders
   app.post(api.orders.create.path, async (req, res) => {
     try {
-      const input = api.orders.create.input.parse(req.body);
+      let input = api.orders.create.input.parse(req.body);
       
       const cartItems = await storage.getCartItems(input.sessionId);
       if (cartItems.length === 0) {
@@ -321,7 +328,31 @@ export async function registerRoutes(
         price: item.product.price
       }));
 
-      const order = await storage.createOrder(input, orderItems);
+      // Validate & apply promo code server-side
+      let promoCode = input.promoCode;
+      let discount = input.discount;
+      if (promoCode) {
+        const promo = await storage.validatePromoCode(promoCode);
+        if (!promo) {
+          promoCode = undefined;
+          discount = undefined;
+        } else {
+          // Recalculate discount server-side
+          const cartTotal = cartItems.reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
+          const computedDiscount = promo.discountType === "percent"
+            ? Math.round((cartTotal * Number(promo.discountValue)) / 100)
+            : Math.min(Number(promo.discountValue), cartTotal);
+          discount = computedDiscount.toString();
+          const newTotal = Math.max(0, cartTotal - computedDiscount).toString();
+          input = { ...input, total: newTotal };
+        }
+      }
+
+      const order = await storage.createOrder({ ...input, promoCode, discount }, orderItems);
+      if (promoCode) {
+        const promo = await storage.validatePromoCode(promoCode);
+        if (promo) await storage.incrementPromoCodeUses(promo.id);
+      }
       await storage.clearCart(input.sessionId);
 
       res.status(201).json(order);
@@ -515,6 +546,80 @@ export async function registerRoutes(
       return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
     }
     res.json(order);
+  });
+
+  // ── CATEGORIES ──────────────────────────────────────────────
+  app.get('/api/categories', async (_req, res) => {
+    const cats = await storage.getAllCategories();
+    res.json(cats);
+  });
+
+  app.post('/api/admin/categories', async (req, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ message: 'Nom de catégorie requis' });
+    }
+    try {
+      const cat = await storage.createCategory(name.trim());
+      res.status(201).json(cat);
+    } catch (err: any) {
+      if (err.code === '23505') {
+        return res.status(409).json({ message: 'Cette catégorie existe déjà' });
+      }
+      throw err;
+    }
+  });
+
+  app.delete('/api/admin/categories/:id', async (req, res) => {
+    await storage.deleteCategory(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // ── PROMO CODES ──────────────────────────────────────────────
+  app.get('/api/admin/promo-codes', async (_req, res) => {
+    const codes = await storage.getPromoCodes();
+    res.json(codes);
+  });
+
+  app.post('/api/admin/promo-codes', async (req, res) => {
+    try {
+      const body = req.body;
+      const promo = await storage.createPromoCode({
+        code: body.code,
+        discountType: body.discountType,
+        discountValue: String(body.discountValue),
+        maxUses: body.maxUses ? Number(body.maxUses) : undefined,
+        active: body.active !== false,
+        expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+      });
+      res.status(201).json(promo);
+    } catch (err: any) {
+      if (err.code === '23505') {
+        return res.status(409).json({ message: 'Ce code promo existe déjà' });
+      }
+      throw err;
+    }
+  });
+
+  app.patch('/api/admin/promo-codes/:id/toggle', async (req, res) => {
+    const { active } = req.body;
+    const promo = await storage.togglePromoCode(Number(req.params.id), active);
+    if (!promo) return res.status(404).json({ message: 'Code promo introuvable' });
+    res.json(promo);
+  });
+
+  app.delete('/api/admin/promo-codes/:id', async (req, res) => {
+    await storage.deletePromoCode(Number(req.params.id));
+    res.status(204).end();
+  });
+
+  // Validate promo code (public)
+  app.post('/api/promo-codes/validate', async (req, res) => {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ message: 'Code requis' });
+    const promo = await storage.validatePromoCode(code);
+    if (!promo) return res.status(404).json({ message: 'Code invalide, expiré ou inactif' });
+    res.json(promo);
   });
 
   return httpServer;
