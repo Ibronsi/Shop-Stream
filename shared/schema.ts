@@ -40,6 +40,7 @@ export const products = pgTable("products", {
   rating: numeric("rating").default("4.5"),
   reviews: integer("reviews").default(0),
   stock: integer("stock").default(100),
+  minOrderQty: integer("min_order_qty"), // null = vente normale, ≥ 2 = vente en gros
 });
 
 export const cartItems = pgTable("cart_items", {
@@ -78,6 +79,7 @@ export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").notNull(),
   productId: integer("product_id").notNull(),
+  productName: text("product_name"), // nom du produit au moment de la commande
   quantity: integer("quantity").notNull(),
   price: numeric("price").notNull(),
 });
@@ -85,7 +87,7 @@ export const orderItems = pgTable("order_items", {
 export const promoCodes = pgTable("promo_codes", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
-  discountType: text("discount_type").notNull().default("percent"), // 'percent' | 'fixed'
+  discountType: text("discount_type").notNull().default("percent"),
   discountValue: numeric("discount_value").notNull(),
   maxUses: integer("max_uses"),
   uses: integer("uses").notNull().default(0),
@@ -94,7 +96,7 @@ export const promoCodes = pgTable("promo_codes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Schemas
+// ── SCHEMAS ───────────────────────────────────────────────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true }).extend({
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Le mot de passe doit avoir au moins 6 caractères"),
@@ -105,23 +107,33 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
   city: z.string().min(2, "La ville est requise"),
   district: z.string().min(2, "Le quartier est requis"),
 }).omit({ name: true });
-export const insertProductSchema = createInsertSchema(products).omit({ id: true });
+
+export const insertProductSchema = createInsertSchema(products).omit({ id: true }).extend({
+  minOrderQty: z.number().int().min(1).optional().nullable(),
+});
+
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
+
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true, status: true, approvalStatus: true, rejectionReason: true }).extend({
   paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
   promoCode: z.string().optional(),
   discount: z.string().optional(),
 });
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
+
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true }).extend({
+  productName: z.string().optional(),
+});
+
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
+
 export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, createdAt: true, uses: true }).extend({
   discountType: z.enum(["percent", "fixed"]),
   discountValue: z.string().min(1),
   maxUses: z.number().optional(),
 });
 
-// Types
+// ── TYPES ─────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Product = typeof products.$inferSelect;
@@ -139,6 +151,5 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 
-// API Types
 export type CartItemWithProduct = CartItem & { product: Product };
 export type WishlistItemWithProduct = WishlistItem & { product: Product };
