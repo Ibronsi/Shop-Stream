@@ -3,7 +3,11 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { desc } from "drizzle-orm";
+import * as fs from "fs";
+import * as path from "path";
+
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 async function seedDatabase() {
   const existingAdmin = await storage.getUserByEmail("admin@luxestore.com");
@@ -14,131 +18,59 @@ async function seedDatabase() {
       name: "Admin User",
     });
     const admin = await storage.getUserByEmail("admin@luxestore.com");
-    if (admin) {
-      await storage.updateUserRole(admin.id, "admin");
-    }
+    if (admin) await storage.updateUserRole(admin.id, "admin");
   }
 
   const existingProducts = await storage.getProducts();
   if (existingProducts.length === 0) {
     const productsData = [
-      {
-        name: "Wireless Headphones",
-        description: "Premium noise-canceling wireless headphones with 30-hour battery life and premium sound quality.",
-        price: "199.99",
-        imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80",
-        category: "Electronics",
-        rating: "4.8",
-        reviews: 324,
-        stock: 50
-      },
-      {
-        name: "Minimalist Watch",
-        description: "Classic design meets modern minimalism. Premium stainless steel with genuine leather strap.",
-        price: "129.50",
-        imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80",
-        category: "Accessories",
-        rating: "4.6",
-        reviews: 156,
-        stock: 75
-      },
-      {
-        name: "Smart Speaker",
-        description: "Voice-controlled smart speaker with high-fidelity audio and AI integration.",
-        price: "89.99",
-        imageUrl: "https://images.unsplash.com/photo-1589492477829-5e65395b66cc?w=800&q=80",
-        category: "Electronics",
-        rating: "4.4",
-        reviews: 287,
-        stock: 120
-      },
-      {
-        name: "Designer Backpack",
-        description: "Durable and stylish backpack perfect for everyday use with multiple compartments.",
-        price: "75.00",
-        imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80",
-        category: "Fashion",
-        rating: "4.5",
-        reviews: 203,
-        stock: 89
-      },
-      {
-        name: "Mechanical Keyboard",
-        description: "Premium mechanical keyboard with tactile switches for the ultimate typing experience.",
-        price: "149.00",
-        imageUrl: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=800&q=80",
-        category: "Electronics",
-        rating: "4.7",
-        reviews: 412,
-        stock: 45
-      },
-      {
-        name: "Polaroid Camera",
-        description: "Capture memories instantly with this vintage-style instant camera.",
-        price: "119.95",
-        imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80",
-        category: "Photography",
-        rating: "4.3",
-        reviews: 189,
-        stock: 35
-      },
-      {
-        name: "Portable Charger",
-        description: "High-capacity portable charger with fast charging support for multiple devices.",
-        price: "49.99",
-        imageUrl: "https://images.unsplash.com/photo-1609042231871-5c5b4b8b6b0e?w=800&q=80",
-        category: "Electronics",
-        rating: "4.6",
-        reviews: 521,
-        stock: 200
-      },
-      {
-        name: "Leather Messenger Bag",
-        description: "Premium genuine leather messenger bag perfect for work and travel.",
-        price: "189.00",
-        imageUrl: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&q=80",
-        category: "Accessories",
-        rating: "4.7",
-        reviews: 267,
-        stock: 40
-      }
+      { name: "Casque Audio Sans Fil", description: "Casque sans fil premium avec réduction de bruit active, 30 heures d'autonomie.", price: "25000", imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80", category: "Électronique", rating: "4.8", reviews: 324, stock: 50 },
+      { name: "Montre Minimaliste", description: "Design classique et moderne. Bracelet en cuir véritable, cadran épuré.", price: "18000", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80", category: "Accessoires", rating: "4.6", reviews: 156, stock: 75 },
+      { name: "Enceinte Connectée", description: "Enceinte intelligente contrôlée par la voix avec son haute-fidélité.", price: "12000", imageUrl: "https://images.unsplash.com/photo-1589492477829-5e65395b66cc?w=800&q=80", category: "Électronique", rating: "4.4", reviews: 287, stock: 120 },
+      { name: "Sac à Dos Design", description: "Sac à dos solide et élégant, parfait pour le quotidien. Plusieurs compartiments.", price: "9000", imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80", category: "Mode", rating: "4.5", reviews: 203, stock: 89 },
+      { name: "Clavier Mécanique", description: "Clavier mécanique premium avec switches tactiles pour une expérience de frappe ultime.", price: "20000", imageUrl: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=800&q=80", category: "Électronique", rating: "4.7", reviews: 412, stock: 45 },
+      { name: "Appareil Photo Instantané", description: "Capturez vos souvenirs instantanément avec cet appareil de style vintage.", price: "16000", imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80", category: "Photographie", rating: "4.3", reviews: 189, stock: 35 },
     ];
-
-    for (const product of productsData) {
-      await storage.createProduct(product);
-    }
+    for (const product of productsData) await storage.createProduct(product);
   }
 }
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   await seedDatabase();
 
-  // Auth
+  // ── IMAGE UPLOAD ─────────────────────────────────────────────
+  app.post('/api/upload', async (req, res) => {
+    try {
+      const { imageData, fileName } = req.body;
+      if (!imageData || !fileName) {
+        return res.status(400).json({ message: "Données image manquantes" });
+      }
+      // Strip base64 header
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+      const ext = imageData.match(/data:image\/(\w+);/)?.[1] || "jpg";
+      const safeName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}.${ext}`;
+      const filePath = path.join(UPLOADS_DIR, safeName);
+      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      res.json({ url: `/uploads/${safeName}` });
+    } catch (err) {
+      res.status(500).json({ message: "Erreur lors de l'upload" });
+    }
+  });
+
+  // ── AUTH ─────────────────────────────────────────────────────
   app.post(api.auth.register.path, async (req, res) => {
     try {
       const input = api.auth.register.input.parse(req.body);
       const user = await storage.registerUser(input);
-      if (!user) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
+      if (!user) return res.status(400).json({ message: "Email déjà utilisé" });
       req.session.userId = user.id;
       req.session.save((err) => {
-        if (err) {
-          return res.status(500).json({ message: "Session save failed" });
-        }
+        if (err) return res.status(500).json({ message: "Session save failed" });
         const { password, ...safeUser } = user;
         res.status(201).json(safeUser);
       });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
@@ -147,66 +79,46 @@ export async function registerRoutes(
     try {
       const input = api.auth.login.input.parse(req.body);
       const user = await storage.loginUser(input.email, input.password);
-      if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-      // Merge session cart with user account
+      if (!user) return res.status(401).json({ message: "Email ou mot de passe invalide" });
       const sessionId = req.body.sessionId as string | undefined;
-      if (sessionId) {
-        await storage.mergeCartOnLogin(sessionId, user.id);
-      }
+      if (sessionId) await storage.mergeCartOnLogin(sessionId, user.id);
       req.session.userId = user.id;
       req.session.save((err) => {
-        if (err) {
-          return res.status(500).json({ message: "Session save failed" });
-        }
+        if (err) return res.status(500).json({ message: "Session save failed" });
         const { password, ...safeUser } = user;
         res.json(safeUser);
       });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
 
   app.post(api.auth.logout.path, (req, res) => {
-    req.session.destroy(() => {
-      res.json({ message: "Logged out" });
-    });
+    req.session.destroy(() => res.json({ message: "Déconnecté" }));
   });
 
   app.get(api.auth.me.path, async (req, res) => {
-    if (!req.session.userId) {
-      return res.json(null);
-    }
+    if (!req.session.userId) return res.json(null);
     const user = await storage.getUserById(req.session.userId);
-    if (!user) {
-      return res.json(null);
-    }
+    if (!user) return res.json(null);
     const { password, ...safeUser } = user;
     res.json(safeUser);
   });
 
-  // Products
+  // ── PRODUCTS ─────────────────────────────────────────────────
   app.get(api.products.list.path, async (req, res) => {
-    const search = req.query.search as string | undefined;
-    const category = req.query.category as string | undefined;
-    const sortBy = req.query.sortBy as string | undefined;
-
-    const products = await storage.getProducts(search, category, sortBy);
+    const products = await storage.getProducts(
+      req.query.search as string | undefined,
+      req.query.category as string | undefined,
+      req.query.sortBy as string | undefined
+    );
     res.json(products);
   });
 
   app.get(api.products.get.path, async (req, res) => {
     const product = await storage.getProduct(Number(req.params.id));
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    if (!product) return res.status(404).json({ message: 'Produit introuvable' });
     res.json(product);
   });
 
@@ -216,17 +128,12 @@ export async function registerRoutes(
       const product = await storage.createProduct(input);
       res.status(201).json(product);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
 
-  // Cart
+  // ── CART ─────────────────────────────────────────────────────
   app.get(api.cart.list.path, async (req, res) => {
     const userId = req.session.userId;
     const items = await storage.getCartItems(req.params.sessionId, userId);
@@ -240,12 +147,7 @@ export async function registerRoutes(
       const item = await storage.addToCart({ ...input, userId });
       res.json(item);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
@@ -256,12 +158,7 @@ export async function registerRoutes(
       const item = await storage.updateCartItem(Number(req.params.id), input.quantity);
       res.json(item);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
@@ -272,11 +169,12 @@ export async function registerRoutes(
   });
 
   app.delete(api.cart.clear.path, async (req, res) => {
-    await storage.clearCart(req.params.sessionId);
+    const userId = req.session.userId;
+    await storage.clearCart(req.params.sessionId, userId);
     res.status(204).end();
   });
 
-  // Wishlist
+  // ── WISHLIST ─────────────────────────────────────────────────
   app.get(api.wishlist.list.path, async (req, res) => {
     const items = await storage.getWishlist(req.params.sessionId);
     res.json(items);
@@ -288,12 +186,7 @@ export async function registerRoutes(
       const item = await storage.addToWishlist(input);
       res.json(item);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
@@ -303,29 +196,28 @@ export async function registerRoutes(
     res.status(204).end();
   });
 
-  // Orders
+  // ── ORDERS ───────────────────────────────────────────────────
   app.post(api.orders.create.path, async (req, res) => {
     try {
       let input = api.orders.create.input.parse(req.body);
-      
-      const cartItems = await storage.getCartItems(input.sessionId);
+      const userId = req.session.userId;
+
+      // IMPORTANT: Use userId when logged in to get the right cart
+      const cartItems = await storage.getCartItems(input.sessionId, userId);
       if (cartItems.length === 0) {
-        return res.status(400).json({ message: "Cart is empty" });
+        return res.status(400).json({ message: "Votre panier est vide" });
       }
 
-      // Check stock availability
       for (const item of cartItems) {
         if (item.product.stock < item.quantity) {
-          return res.status(400).json({ 
-            message: `Stock insuffisant pour ${item.product.name}. Disponible: ${item.product.stock}, demandé: ${item.quantity}` 
-          });
+          return res.status(400).json({ message: `Stock insuffisant pour ${item.product.name}. Disponible: ${item.product.stock}, demandé: ${item.quantity}` });
         }
       }
 
       const orderItems = cartItems.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: item.product.price
+        price: item.product.price,
       }));
 
       // Validate & apply promo code server-side
@@ -337,32 +229,28 @@ export async function registerRoutes(
           promoCode = undefined;
           discount = undefined;
         } else {
-          // Recalculate discount server-side
           const cartTotal = cartItems.reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
           const computedDiscount = promo.discountType === "percent"
             ? Math.round((cartTotal * Number(promo.discountValue)) / 100)
             : Math.min(Number(promo.discountValue), cartTotal);
           discount = computedDiscount.toString();
-          const newTotal = Math.max(0, cartTotal - computedDiscount).toString();
-          input = { ...input, total: newTotal };
+          input = { ...input, total: Math.max(0, cartTotal - computedDiscount).toString() };
         }
       }
 
       const order = await storage.createOrder({ ...input, promoCode, discount }, orderItems);
+
       if (promoCode) {
         const promo = await storage.validatePromoCode(promoCode);
         if (promo) await storage.incrementPromoCodeUses(promo.id);
       }
-      await storage.clearCart(input.sessionId);
+
+      // Clear cart: use userId when logged in, sessionId for guests
+      await storage.clearCart(input.sessionId, userId);
 
       res.status(201).json(order);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
@@ -374,9 +262,7 @@ export async function registerRoutes(
 
   app.get(api.orders.get.path, async (req, res) => {
     const order = await storage.getOrder(Number(req.params.id));
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ message: 'Commande introuvable' });
     res.json(order);
   });
 
@@ -390,165 +276,109 @@ export async function registerRoutes(
     res.json(allOrders);
   });
 
-  // Admin Stats
-  app.get(api.admin.stats.path, async (req, res) => {
+  // ── ADMIN ────────────────────────────────────────────────────
+  app.get(api.admin.stats.path, async (_req, res) => {
     const stats = await storage.getAdminStats();
     res.json(stats);
   });
 
-  // Update Product
   app.patch(api.admin.updateProduct.path, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const input = api.admin.updateProduct.input.parse(req.body);
       const product = await storage.updateProduct(id, input);
-      if (!product) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
+      if (!product) return res.status(404).json({ message: 'Produit introuvable' });
       res.json(product);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
 
-  // Delete Product
   app.delete(api.admin.deleteProduct.path, async (req, res) => {
-    const id = Number(req.params.id);
-    const deleted = await storage.deleteProduct(id);
-    if (!deleted) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    const deleted = await storage.deleteProduct(Number(req.params.id));
+    if (!deleted) return res.status(404).json({ message: 'Produit introuvable' });
     res.status(204).send();
   });
 
-  // Update Order Status
   app.patch(api.admin.updateOrderStatus.path, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const input = api.admin.updateOrderStatus.input.parse(req.body);
       const order = await storage.updateOrderStatus(id, input.status);
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
+      if (!order) return res.status(404).json({ message: 'Commande introuvable' });
       res.json(order);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
 
-  // Approve Order
   app.post(api.admin.approveOrder.path, async (req, res) => {
-    const id = Number(req.params.id);
-    const order = await storage.updateOrderApprovalStatus(id, "approved");
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    const order = await storage.updateOrderApprovalStatus(Number(req.params.id), "approved");
+    if (!order) return res.status(404).json({ message: 'Commande introuvable' });
     res.json(order);
   });
 
-  // Reject Order
   app.post(api.admin.rejectOrder.path, async (req, res) => {
     try {
-      const id = Number(req.params.id);
       const input = z.object({ reason: z.string() }).parse(req.body);
-      const order = await storage.updateOrderApprovalStatus(id, "rejected", input.reason);
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
+      const order = await storage.updateOrderApprovalStatus(Number(req.params.id), "rejected", input.reason);
+      if (!order) return res.status(404).json({ message: 'Commande introuvable' });
       res.json(order);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       throw err;
     }
   });
 
-  // Get User Orders by Email
   app.get(api.orders.userOrders.path, async (req, res) => {
-    const email = req.params.email;
-    const orders = await storage.getUserOrders(email);
+    const orders = await storage.getUserOrders(req.params.email);
     res.json(orders);
   });
 
-  // Get User Profile
+  // ── USER PROFILE ─────────────────────────────────────────────
   app.get(api.user.getProfile.path, async (req, res) => {
-    const userId = Number(req.params.userId);
-    const user = await storage.getUserById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    const user = await storage.getUserById(Number(req.params.userId));
+    if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
     const { password, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   });
 
-  // Update User Profile
   app.patch(api.user.updateProfile.path, async (req, res) => {
     try {
       const userId = Number(req.params.userId);
       const input = api.user.updateProfile.input.parse(req.body);
       const user = await storage.updateUserProfile(userId, input);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
+      if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
       const { password, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-          field: err.errors[0].path.join('.'),
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
       throw err;
     }
   });
 
-  // Update User Password
   app.patch(api.user.updatePassword.path, async (req, res) => {
     try {
       const userId = Number(req.params.userId);
       const input = api.user.updatePassword.input.parse(req.body);
       const success = await storage.updateUserPassword(userId, input.currentPassword, input.newPassword);
-      if (!success) {
-        return res.status(400).json({ message: 'Invalid password' });
-      }
-      res.json({ message: 'Password updated successfully' });
+      if (!success) return res.status(400).json({ message: 'Mot de passe actuel invalide' });
+      res.json({ message: 'Mot de passe mis à jour' });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({
-          message: err.errors[0].message,
-        });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       throw err;
     }
   });
 
-  // Cancel Order
   app.post(api.orders.cancel.path, async (req, res) => {
-    const id = Number(req.params.id);
-    const order = await storage.cancelOrder(id);
-    if (!order) {
-      return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
-    }
+    const order = await storage.cancelOrder(Number(req.params.id));
+    if (!order) return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
     res.json(order);
   });
 
-  // ── CATEGORIES ──────────────────────────────────────────────
+  // ── CATEGORIES ───────────────────────────────────────────────
   app.get('/api/categories', async (_req, res) => {
     const cats = await storage.getAllCategories();
     res.json(cats);
@@ -556,16 +386,12 @@ export async function registerRoutes(
 
   app.post('/api/admin/categories', async (req, res) => {
     const { name } = req.body;
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({ message: 'Nom de catégorie requis' });
-    }
+    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: 'Nom de catégorie requis' });
     try {
       const cat = await storage.createCategory(name.trim());
       res.status(201).json(cat);
     } catch (err: any) {
-      if (err.code === '23505') {
-        return res.status(409).json({ message: 'Cette catégorie existe déjà' });
-      }
+      if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
       throw err;
     }
   });
@@ -577,8 +403,7 @@ export async function registerRoutes(
 
   // ── PROMO CODES ──────────────────────────────────────────────
   app.get('/api/admin/promo-codes', async (_req, res) => {
-    const codes = await storage.getPromoCodes();
-    res.json(codes);
+    res.json(await storage.getPromoCodes());
   });
 
   app.post('/api/admin/promo-codes', async (req, res) => {
@@ -594,16 +419,13 @@ export async function registerRoutes(
       });
       res.status(201).json(promo);
     } catch (err: any) {
-      if (err.code === '23505') {
-        return res.status(409).json({ message: 'Ce code promo existe déjà' });
-      }
+      if (err.code === '23505') return res.status(409).json({ message: 'Ce code promo existe déjà' });
       throw err;
     }
   });
 
   app.patch('/api/admin/promo-codes/:id/toggle', async (req, res) => {
-    const { active } = req.body;
-    const promo = await storage.togglePromoCode(Number(req.params.id), active);
+    const promo = await storage.togglePromoCode(Number(req.params.id), req.body.active);
     if (!promo) return res.status(404).json({ message: 'Code promo introuvable' });
     res.json(promo);
   });
@@ -613,13 +435,18 @@ export async function registerRoutes(
     res.status(204).end();
   });
 
-  // Validate promo code (public)
   app.post('/api/promo-codes/validate', async (req, res) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ message: 'Code requis' });
     const promo = await storage.validatePromoCode(code);
     if (!promo) return res.status(404).json({ message: 'Code invalide, expiré ou inactif' });
     res.json(promo);
+  });
+
+  // ── ADMIN ORDERS (detailed endpoint) ─────────────────────────
+  app.get('/api/admin/orders', async (_req, res) => {
+    const allOrders = await storage.getAllOrders();
+    res.json(allOrders.reverse());
   });
 
   return httpServer;

@@ -14,15 +14,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const addToCart = useAddToCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigation if clicking button inside link
+    e.preventDefault();
     e.stopPropagation();
     if (!sessionId) return;
-    
-    addToCart.mutate({
-      productId: product.id,
-      quantity: 1,
-      sessionId,
-    });
+    addToCart.mutate({ productId: product.id, quantity: 1, sessionId });
   };
 
   return (
@@ -52,13 +47,12 @@ export function ProductCard({ product }: ProductCardProps) {
               </h3>
             </div>
             <span className="font-semibold text-lg text-primary shrink-0">
-              ${product.price}
+              {Number(product.price).toLocaleString("fr-FR")} CFA
             </span>
           </div>
           <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
             {product.description}
           </p>
-          {/* Stock Indicator */}
           <div className="mb-3">
             {product.stock > 0 ? (
               <span className="text-xs font-semibold text-green-600">
@@ -71,17 +65,17 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
           <div className="pt-2">
-            <Button 
+            <Button
               onClick={handleAddToCart}
               disabled={addToCart.isPending || product.stock === 0}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {addToCart.isPending ? (
-                "Adding..."
+                "Ajout en cours..."
               ) : (
                 <>
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  Add to Cart
+                  Ajouter au panier
                 </>
               )}
             </Button>
