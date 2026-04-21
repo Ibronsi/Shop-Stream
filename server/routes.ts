@@ -214,8 +214,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
+      // Vérifier les seuils de vente en gros
+      for (const item of cartItems) {
+        if (item.product.minOrderQty && item.quantity < item.product.minOrderQty) {
+          return res.status(400).json({
+            message: `Le produit "${item.product.name}" est vendu en gros : minimum ${item.product.minOrderQty} unités requises (actuellement ${item.quantity}).`,
+          });
+        }
+      }
+
       const orderItems = cartItems.map(item => ({
         productId: item.productId,
+        productName: item.product.name,
         quantity: item.quantity,
         price: item.product.price,
       }));

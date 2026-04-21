@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useSEO } from "@/hooks/use-seo";
-import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus } from "@/hooks/use-admin";
+import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus, useUpdateProduct } from "@/hooks/use-admin";
 import { useProducts } from "@/hooks/use-products";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,10 @@ import { Link, useLocation } from "wouter";
 import {
   Loader2, ChevronLeft, Trash2, Plus, Package, ShoppingCart, TrendingUp,
   Layers, Tag, FolderOpen, ToggleLeft, ToggleRight, Printer, FileText,
-  BookOpen,
+  BookOpen, Pencil, X,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import type { Product } from "@shared/schema";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -110,8 +112,10 @@ export default function AdminDashboard() {
   const { data: products } = useProducts();
   const deleteProduct = useDeleteProduct();
   const updateOrderStatus = useUpdateOrderStatus();
+  const updateProduct = useUpdateProduct();
 
   const [activeTab, setActiveTab] = useState<TabId>("orders");
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const { data: categories } = useQuery<Category[]>({ queryKey: ['/api/categories'] });
   const [newCatName, setNewCatName] = useState("");
@@ -337,6 +341,7 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-4 font-semibold">Catégorie</th>
                     <th className="text-left py-3 px-4 font-semibold">Prix</th>
                     <th className="text-left py-3 px-4 font-semibold">Stock</th>
+                    <th className="text-left py-3 px-4 font-semibold">Vente en gros</th>
                     <th className="text-left py-3 px-4 font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -350,12 +355,29 @@ export default function AdminDashboard() {
                         <span className={product.stock > 5 ? "text-green-600" : "text-red-600 font-semibold"}>{product.stock} unités</span>
                       </td>
                       <td className="py-3 px-4">
-                        <Button size="icon" variant="outline" className="h-8 w-8" disabled={deleteProduct.isPending}
-                          onClick={() => handleDeleteProduct(product.id, product.name)}
-                          data-testid={`button-delete-product-${product.id}`}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
+                        {product.minOrderQty && product.minOrderQty >= 2 ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-semibold">
+                            Min {product.minOrderQty}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-1.5">
+                          <Button size="icon" variant="outline" className="h-8 w-8"
+                            onClick={() => setEditingProduct(product)}
+                            data-testid={`button-edit-product-${product.id}`}
+                          >
+                            <Pencil className="h-3 w-3 text-primary" />
+                          </Button>
+                          <Button size="icon" variant="outline" className="h-8 w-8" disabled={deleteProduct.isPending}
+                            onClick={() => handleDeleteProduct(product.id, product.name)}
+                            data-testid={`button-delete-product-${product.id}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -585,6 +607,171 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* ── MODAL ÉDITION PRODUIT ──────────────────────────────────── */}
+      {editingProduct && (
+        <EditProductModal
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSave={(data) => {
+            updateProduct.mutate(
+              { id: editingProduct.id, data },
+              {
+                onSuccess: () => {
+                  toast({ title: "Produit mis à jour" });
+                  setEditingProduct(null);
+                },
+                onError: () => toast({ title: "Erreur", description: "Impossible de modifier le produit", variant: "destructive" }),
+              }
+            );
+          }}
+          saving={updateProduct.isPending}
+          categoryList={(categories || []).map(c => c.name)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── EDIT PRODUCT MODAL ────────────────────────────────────────────────────────
+function EditProductModal({
+  product, onClose, onSave, saving, categoryList,
+}: {
+  product: Product;
+  onClose: () => void;
+  onSave: (data: Partial<Product>) => void;
+  saving: boolean;
+  categoryList: string[];
+}) {
+  const [form, setForm] = useState({
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    imageUrl: product.imageUrl,
+    category: product.category,
+    stock: String(product.stock),
+    minOrderQty: product.minOrderQty ? String(product.minOrderQty) : "",
+  });
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Fichier trop volumineux", description: "Max 5 Mo", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: base64, fileName: file.name }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        setForm(f => ({ ...f, imageUrl: url }));
+        toast({ title: "Photo uploadée" });
+      } else {
+        toast({ title: "Erreur upload", variant: "destructive" });
+      }
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = () => {
+    const minQty = form.minOrderQty ? parseInt(form.minOrderQty) : null;
+    onSave({
+      name: form.name,
+      description: form.description,
+      price: form.price,
+      imageUrl: form.imageUrl,
+      category: form.category,
+      stock: parseInt(form.stock),
+      minOrderQty: minQty && minQty >= 2 ? minQty : null,
+    } as any);
+  };
+
+  const cats = categoryList.length > 0 ? categoryList : ["Électronique", "Mode", "Accessoires", "Photographie", "Audio", "Maison"];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <Card className="w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-2xl font-bold">Modifier le produit</h2>
+            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-edit">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nom *</label>
+              <Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} data-testid="input-edit-name" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description *</label>
+              <Textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} className="min-h-[80px]" data-testid="textarea-edit-description" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Prix (CFA) *</label>
+                <Input type="number" value={form.price} onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} data-testid="input-edit-price" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Stock</label>
+                <Input type="number" value={form.stock} onChange={(e) => setForm(f => ({ ...f, stock: e.target.value }))} data-testid="input-edit-stock" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Catégorie</label>
+              <select value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                data-testid="select-edit-category">
+                {cats.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Quantité minimum (vente en gros, optionnel)</label>
+              <Input type="number" min="2" value={form.minOrderQty}
+                onChange={(e) => setForm(f => ({ ...f, minOrderQty: e.target.value }))}
+                placeholder="Vide = vente normale"
+                data-testid="input-edit-min-order" />
+              <p className="text-xs text-muted-foreground mt-1">Mettre ≥ 2 pour activer la vente en gros (ex: 10 pour minimum 10 unités).</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Photo</label>
+              <div className="flex items-center gap-3">
+                {form.imageUrl && (
+                  <img src={form.imageUrl} alt="aperçu" className="h-16 w-16 object-cover rounded-md border" />
+                )}
+                <div className="flex-1 space-y-2">
+                  <Input type="text" value={form.imageUrl}
+                    onChange={(e) => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="URL ou choisir une photo"
+                    data-testid="input-edit-image-url" />
+                  <input type="file" accept="image/*" onChange={handleFile}
+                    className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-primary file:text-primary-foreground file:font-medium hover:file:bg-primary/90"
+                    data-testid="input-edit-image-file" />
+                  {uploading && <p className="text-xs text-primary">Upload en cours...</p>}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={onClose} data-testid="button-cancel-edit">
+                Annuler
+              </Button>
+              <Button className="flex-1" onClick={handleSubmit} disabled={saving || uploading} data-testid="button-save-edit">
+                {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enregistrement...</> : "Enregistrer"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

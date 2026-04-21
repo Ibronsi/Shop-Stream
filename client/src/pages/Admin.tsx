@@ -36,7 +36,7 @@ export default function Admin() {
 
   const [formData, setFormData] = useState({
     name: "", description: "", price: "", imageUrl: "", category: categoryList[0] || "Électronique",
-    rating: "4.5", reviews: "0", stock: "100",
+    rating: "4.5", reviews: "0", stock: "100", minOrderQty: "",
   });
   const [imageMode, setImageMode] = useState<"url" | "file">("file");
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -104,12 +104,13 @@ export default function Admin() {
       toast({ title: "Erreur", description: "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
       return;
     }
+    const minQty = formData.minOrderQty ? parseInt(formData.minOrderQty) : null;
     createProduct.mutate(
-      { name: formData.name, description: formData.description, price: formData.price, imageUrl: formData.imageUrl, category: formData.category, rating: formData.rating, reviews: parseInt(formData.reviews), stock: parseInt(formData.stock) },
+      { name: formData.name, description: formData.description, price: formData.price, imageUrl: formData.imageUrl, category: formData.category, rating: formData.rating, reviews: parseInt(formData.reviews), stock: parseInt(formData.stock), minOrderQty: minQty && minQty >= 2 ? minQty : null },
       {
         onSuccess: () => {
           toast({ title: "Succès", description: "Produit ajouté avec succès" });
-          setFormData({ name: "", description: "", price: "", imageUrl: "", category: categoryList[0] || "Électronique", rating: "4.5", reviews: "0", stock: "100" });
+          setFormData({ name: "", description: "", price: "", imageUrl: "", category: categoryList[0] || "Électronique", rating: "4.5", reviews: "0", stock: "100", minOrderQty: "" });
           setImagePreview("");
           if (fileInputRef.current) fileInputRef.current.value = "";
         },
@@ -164,6 +165,19 @@ export default function Admin() {
                     <Input type="number" name="stock" value={formData.stock} onChange={handleChange}
                       placeholder="100" data-testid="input-product-stock" />
                   </div>
+                </div>
+
+                {/* Vente en gros */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Quantité minimum pour vente en gros (optionnel)
+                  </label>
+                  <Input type="number" name="minOrderQty" value={formData.minOrderQty} onChange={handleChange}
+                    placeholder="Ex: 10 (laisser vide pour vente normale)" min="2"
+                    data-testid="input-product-min-order-qty" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Si rempli (≥ 2), ce produit sera marqué "vente en gros" et le client devra commander au minimum cette quantité.
+                  </p>
                 </div>
 
                 {/* Catégorie */}

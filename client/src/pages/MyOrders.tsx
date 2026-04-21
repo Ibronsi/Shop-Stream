@@ -143,10 +143,10 @@ function OrderItemsList({ orderId }: { orderId: number }) {
   if (!items || items.length === 0) return <p className="text-sm text-muted-foreground py-2">Aucun article trouvé.</p>;
   return (
     <div className="mt-3 space-y-2">
-      {items.map((item) => (
+      {items.map((item: any) => (
         <div key={item.id} className="flex justify-between items-center text-sm py-1.5 border-b border-border/30 last:border-0">
           <div>
-            <span className="font-medium text-foreground">Produit #{item.productId}</span>
+            <span className="font-medium text-foreground">{item.productName || `Produit #${item.productId}`}</span>
             <span className="text-muted-foreground ml-2">× {item.quantity}</span>
           </div>
           <span className="font-semibold">{(Number(item.price) * item.quantity).toLocaleString("fr-FR")} CFA</span>

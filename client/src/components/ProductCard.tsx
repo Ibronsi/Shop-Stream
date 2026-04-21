@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { type Product } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Package } from "lucide-react";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
 
@@ -12,12 +12,14 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const sessionId = useSession();
   const addToCart = useAddToCart();
+  const isWholesale = product.minOrderQty && product.minOrderQty >= 2;
+  const minQty = isWholesale ? product.minOrderQty! : 1;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!sessionId) return;
-    addToCart.mutate({ productId: product.id, quantity: 1, sessionId });
+    addToCart.mutate({ productId: product.id, quantity: minQty, sessionId });
   };
 
   return (
@@ -33,6 +35,12 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.stock === 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="text-white font-bold text-lg">Rupture de stock</span>
+            </div>
+          )}
+          {isWholesale && (
+            <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1" data-testid={`badge-wholesale-${product.id}`}>
+              <Package className="h-3 w-3" />
+              Vente en gros
             </div>
           )}
         </div>

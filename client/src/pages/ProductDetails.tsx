@@ -3,7 +3,8 @@ import { useProduct } from "@/hooks/use-products";
 import { useSEO } from "@/hooks/use-seo";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Loader2, ShoppingCart, ArrowLeft, ShieldCheck, Truck, Clock } from "lucide-react";
+import { Loader2, ShoppingCart, ArrowLeft, ShieldCheck, Truck, Clock, Package } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
@@ -21,12 +22,16 @@ export default function ProductDetails() {
   });
   const sessionId = useSession();
   const addToCart = useAddToCart();
+  const isWholesale = !!(product?.minOrderQty && product.minOrderQty >= 2);
+  const minQty = isWholesale ? product!.minOrderQty! : 1;
+  const [quantity, setQuantity] = useState(minQty);
 
   const handleAddToCart = () => {
     if (!product || !sessionId) return;
+    const qty = isWholesale ? Math.max(quantity, minQty) : quantity;
     addToCart.mutate({
       productId: product.id,
-      quantity: 1,
+      quantity: qty,
       sessionId,
     });
   };
@@ -79,6 +84,41 @@ export default function ProductDetails() {
             <p className="text-3xl font-light text-primary mb-4">
               {Number(product.price).toLocaleString("fr-FR")} CFA
             </p>
+
+            {/* Badge Vente en gros */}
+            {isWholesale && (
+              <div className="mb-6 bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700 rounded-xl p-4 flex items-start gap-3" data-testid="badge-wholesale-detail">
+                <Package className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold text-amber-900 dark:text-amber-200">
+                    Produit vendu en gros
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    Quantité minimum à commander : <strong>{minQty} unités</strong>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Sélecteur de quantité */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-foreground mb-2">Quantité</label>
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="outline" size="icon" className="h-10 w-10"
+                  onClick={() => setQuantity((q) => Math.max(minQty, q - 1))}
+                  disabled={quantity <= minQty}
+                  data-testid="button-qty-minus">−</Button>
+                <input type="number" value={quantity} min={minQty} max={product.stock}
+                  onChange={(e) => setQuantity(Math.max(minQty, parseInt(e.target.value) || minQty))}
+                  className="w-20 h-10 text-center border border-input rounded-md bg-background text-foreground"
+                  data-testid="input-quantity"
+                />
+                <Button type="button" variant="outline" size="icon" className="h-10 w-10"
+                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                  disabled={quantity >= product.stock}
+                  data-testid="button-qty-plus">+</Button>
+              </div>
+            </div>
 
             {/* Stock Status */}
             <div className="mb-8">
