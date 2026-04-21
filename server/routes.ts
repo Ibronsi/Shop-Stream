@@ -202,6 +202,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let input = api.orders.create.input.parse(req.body);
       const userId = req.session.userId;
 
+      // Sécurité : seuls les utilisateurs connectés peuvent passer commande
+      if (!userId) {
+        return res.status(401).json({ message: "Vous devez être connecté pour passer une commande." });
+      }
+
       // IMPORTANT: Use userId when logged in to get the right cart
       const cartItems = await storage.getCartItems(input.sessionId, userId);
       if (cartItems.length === 0) {

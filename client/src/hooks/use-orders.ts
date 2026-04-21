@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
 import type { InsertOrder } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -23,13 +23,23 @@ export function useCreateOrder() {
       }
       return api.orders.create.responses[201].parse(await res.json());
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
+      // Vider le panier de l'utilisateur après confirmation de la commande
+      try {
+        const clearUrl = buildUrl(api.cart.clear.path, { sessionId: variables.sessionId });
+        await fetch(clearUrl, { method: api.cart.clear.method });
+      } catch {
+        // best-effort: la commande est déjà créée
+      }
+      queryClient.invalidateQueries({ queryKey: [api.cart.list.path, variables.sessionId] });
       // Invalider le cache des produits pour afficher les nouveaux stocks
       queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.products.get.path] });
       // Invalider les stats admin
       queryClient.invalidateQueries({ queryKey: ['/api/admin/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });
+      // Invalider les commandes du client
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
 
       toast({
         title: "Commande passée !",
