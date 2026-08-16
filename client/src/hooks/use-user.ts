@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { api, buildUrl } from '@shared/routes';
 import { useCurrentUser } from './use-auth';
+import { apiUrl } from "@/lib/api";
 
 export function useMyOrders() {
   const { data: currentUser } = useCurrentUser();
@@ -10,7 +11,7 @@ export function useMyOrders() {
     queryFn: async () => {
       if (!currentUser?.email) return [];
       const url = api.orders.userOrders.path.replace(':email', encodeURIComponent(currentUser.email));
-      const res = await apiRequest('GET', url);
+      const res = await apiRequest('GET', apiUrl(url));
       return res.json();
     },
     enabled: !!currentUser?.email,
@@ -26,8 +27,8 @@ export function useUpdateProfile() {
     mutationFn: async (updates: { name?: string; email?: string }) => {
       if (!currentUser) throw new Error('User not authenticated');
       return apiRequest(
-        api.user.updateProfile.path.replace(':userId', String(currentUser.id)),
         'PATCH',
+        api.user.updateProfile.path.replace(':userId', String(currentUser.id)),
         updates
       );
     },
@@ -43,8 +44,8 @@ export function useChangePassword() {
     mutationFn: async (passwords: { currentPassword: string; newPassword: string }) => {
       if (!currentUser) throw new Error('User not authenticated');
       return apiRequest(
-        api.user.updatePassword.path.replace(':userId', String(currentUser.id)),
         'PATCH',
+        api.user.updatePassword.path.replace(':userId', String(currentUser.id)),
         passwords
       );
     },

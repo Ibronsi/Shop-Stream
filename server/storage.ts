@@ -26,7 +26,7 @@ import {
   type PromoCode,
   type InsertPromoCode,
 } from "@shared/schema";
-import { eq, and, ilike, or, isNull } from "drizzle-orm";
+import { eq, and, ilike, or, isNull, gte, sql, type SQL } from "drizzle-orm";
 import * as bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -61,7 +61,7 @@ export interface IStorage {
   isInWishlist(sessionId: string, productId: number): Promise<boolean>;
 
   // Orders
-  createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  createOrder(order: InsertOrder, items: Omit<InsertOrderItem, "orderId">[]): Promise<Order>;
   getOrders(sessionId: string): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
@@ -131,14 +131,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]> {
-    let query = db.select().from(products);
+    const conditions: SQL[] = [];
     if (search) {
-      query = query.where(or(ilike(products.name, `%${search}%`), ilike(products.description, `%${search}%`)));
+      conditions.push(or(ilike(products.name, `%${search}%`), ilike(products.description, `%${search}%`))!);
     }
     if (category) {
-      query = query.where(eq(products.category, category));
+      conditions.push(eq(products.category, category));
     }
-    const allProducts = await query;
+    const allProducts = conditions.length > 0
+      ? await db.select().from(products).where(and(...conditions))
+      : await db.select().from(products);
     if (sortBy === 'price-asc') return allProducts.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     if (sortBy === 'price-desc') return allProducts.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
     if (sortBy === 'rating') return allProducts.sort((a, b) => parseFloat(b.rating || '0') - parseFloat(a.rating || '0'));
@@ -157,14 +159,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCategories(): Promise<string[]> {
-    const rows = await db.select({ category: products.category }).from(products).distinct();
-    return rows.map(row => row.category);
+    const rows = await db.select({ category: products.category }).from(products).groupBy(products.category);
+    return rows.map((row: { category: string }) => row.category);
   }
 
   async decrementProductStock(productId: number, quantity: number): Promise<boolean> {
     const product = await this.getProduct(productId);
-    if (!product || product.stock < quantity) return false;
-    await db.update(products).set({ stock: product.stock - quantity }).where(eq(products.id, productId));
+    if (!product || (product.stock ?? 0) < quantity) return false;
+    await db.update(products).set({ stock: (product.stock ?? 0) - quantity }).where(eq(products.id, productId));
     return true;
   }
 
@@ -203,7 +205,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(cartItems.userId, item.userId), eq(cartItems.productId, item.productId)));
       if (existing) {
         const [updated] = await db.update(cartItems)
-          .set({ quantity: existing.quantity + item.quantity })
+          .set({ quantity: existing.quantity + (item.quantity ?? 0) })
           .where(eq(cartItems.id, existing.id))
           .returning();
         return updated;
@@ -221,7 +223,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(cartItems.sessionId, item.sessionId), eq(cartItems.productId, item.productId), isNull(cartItems.userId)));
       if (existing) {
         const [updated] = await db.update(cartItems)
-          .set({ quantity: existing.quantity + item.quantity })
+          .set({ quantity: existing.quantity + (item.quantity ?? 0) })
           .where(eq(cartItems.id, existing.id))
           .returning();
         return updated;
@@ -306,13 +308,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── ORDERS ───────────────────────────────────────────────────
-  async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
-    const [newOrder] = await db.insert(orders).values(order).returning();
-    if (items.length > 0) {
-      await db.insert(orderItems).values(items.map(i => ({ ...i, orderId: newOrder.id })));
-      for (const item of items) await this.decrementProductStock(item.productId, item.quantity);
-    }
-    return newOrder;
+  async createOrder(order: InsertOrder, items: Omit<InsertOrderItem, "orderId">[]): Promise<Order> {
+    return db.transaction(async (tx) => {
+      const [newOrder] = await tx.insert(orders).values(order).returning();
+      if (items.length > 0) {
+        for (const item of items) {
+          const updated = await tx
+            .update(products)
+            .set({ stock: sql`${products.stock} - ${item.quantity}` })
+            .where(and(eq(products.id, item.productId), gte(products.stock, item.quantity)))
+            .returning({ id: products.id });
+          if (updated.length === 0) {
+            const error = new Error(`Stock insuffisant pour le produit ${item.productId}.`);
+            (error as Error & { status?: number }).status = 400;
+            throw error;
+          }
+        }
+        await tx.insert(orderItems).values(items.map(i => ({ ...i, orderId: newOrder.id })));
+      }
+      return newOrder;
+    });
   }
 
   async getOrders(sessionId: string): Promise<Order[]> {
@@ -332,7 +347,7 @@ export class DatabaseStorage implements IStorage {
     const allOrders = await db.select().from(orders);
     const allProducts = await db.select().from(products);
     const totalRevenue = allOrders.reduce((sum, o) => sum + parseFloat(o.total), 0);
-    const totalStock = allProducts.reduce((sum, p) => sum + p.stock, 0);
+    const totalStock = allProducts.reduce((sum, p) => sum + (p.stock ?? 0), 0);
     return {
       totalOrders: allOrders.length,
       totalRevenue: totalRevenue.toFixed(2),
@@ -349,7 +364,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<boolean> {
     const result = await db.delete(products).where(eq(products.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async updateOrderStatus(id: number, approvalStatus: string): Promise<Order | undefined> {
@@ -390,7 +405,7 @@ export class DatabaseStorage implements IStorage {
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
     for (const item of items) {
       const product = await this.getProduct(item.productId);
-      if (product) await db.update(products).set({ stock: product.stock + item.quantity }).where(eq(products.id, item.productId));
+      if (product) await db.update(products).set({ stock: (product.stock ?? 0) + item.quantity }).where(eq(products.id, item.productId));
     }
     const [updated] = await db.update(orders).set({ approvalStatus: 'cancelled' }).where(eq(orders.id, id)).returning();
     return updated;

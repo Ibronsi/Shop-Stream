@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -9,16 +9,62 @@ import * as path from "path";
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Connexion requise." });
+  }
+  next();
+}
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Connexion requise." });
+  }
+  const user = await storage.getUserById(req.session.userId);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ message: "Accès administrateur requis." });
+  }
+  next();
+}
+
+async function authorizeOrder(req: Request, res: Response, orderId: number) {
+  if (!req.session.userId) {
+    res.status(401).json({ message: "Connexion requise." });
+    return null;
+  }
+  const order = await storage.getOrder(orderId);
+  if (!order) {
+    res.status(404).json({ message: "Commande introuvable" });
+    return null;
+  }
+  const user = await storage.getUserById(req.session.userId);
+  if (!user || (user.role !== "admin" && order.email !== user.email)) {
+    res.status(403).json({ message: "Accès non autorisé." });
+    return null;
+  }
+  return order;
+}
+
 async function seedDatabase() {
-  const existingAdmin = await storage.getUserByEmail("admin@luxestore.com");
-  if (!existingAdmin) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    const existingAdmin = await storage.getUserByEmail(adminEmail);
+    if (!existingAdmin) {
     await storage.registerUser({
-      email: "admin@luxestore.com",
-      password: "admin123",
-      name: "Admin User",
+      email: adminEmail,
+      password: adminPassword,
+      name: process.env.ADMIN_NAME || "Admin User",
+      firstName: "Admin",
+      lastName: "User",
+      phone: "00000000",
+      phoneCountry: "NE",
+      city: "Niamey",
+      district: "Centre",
     });
-    const admin = await storage.getUserByEmail("admin@luxestore.com");
-    if (admin) await storage.updateUserRole(admin.id, "admin");
+    }
+    const admin = await storage.getUserByEmail(adminEmail);
+    if (admin && admin.role !== "admin") await storage.updateUserRole(admin.id, "admin");
   }
 
   const existingProducts = await storage.getProducts();
@@ -39,11 +85,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   await seedDatabase();
 
   // ── IMAGE UPLOAD ─────────────────────────────────────────────
-  app.post('/api/upload', async (req, res) => {
+  app.post('/api/upload', requireAdmin, async (req, res) => {
     try {
       const { imageData, fileName } = req.body;
       if (!imageData || !fileName) {
         return res.status(400).json({ message: "Données image manquantes" });
+      }
+      if (
+        typeof imageData !== "string" ||
+        !/^data:image\/(png|jpe?g|webp);base64,/i.test(imageData) ||
+        imageData.length > 8 * 1024 * 1024
+      ) {
+        return res.status(400).json({ message: "Image invalide ou trop volumineuse." });
       }
       // Strip base64 header
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
@@ -51,7 +104,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const safeName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}.${ext}`;
       const filePath = path.join(UPLOADS_DIR, safeName);
       fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-      res.json({ url: `/uploads/${safeName}` });
+      const publicApiUrl = (process.env.PUBLIC_API_URL || "").replace(/\/+$/, "");
+      res.json({ url: `${publicApiUrl}/uploads/${safeName}` });
     } catch (err) {
       res.status(500).json({ message: "Erreur lors de l'upload" });
     }
@@ -122,7 +176,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(product);
   });
 
-  app.post(api.products.create.path, async (req, res) => {
+  app.post(api.products.create.path, requireAdmin, async (req, res) => {
     try {
       const input = api.products.create.input.parse(req.body);
       const product = await storage.createProduct(input);
@@ -155,6 +209,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.patch(api.cart.update.path, async (req, res) => {
     try {
       const input = api.cart.update.input.parse(req.body);
+      const userId = req.session.userId;
+      const ownedItems = await storage.getCartItems(
+        req.header("X-Cart-Session") || "",
+        userId,
+      );
+      if (!ownedItems.some((item) => item.id === Number(req.params.id))) {
+        return res.status(403).json({ message: "Article de panier non autorisé." });
+      }
       const item = await storage.updateCartItem(Number(req.params.id), input.quantity);
       res.json(item);
     } catch (err) {
@@ -164,6 +226,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete(api.cart.delete.path, async (req, res) => {
+    const ownedItems = await storage.getCartItems(
+      req.header("X-Cart-Session") || "",
+      req.session.userId,
+    );
+    if (!ownedItems.some((item) => item.id === Number(req.params.id))) {
+      return res.status(403).json({ message: "Article de panier non autorisé." });
+    }
     await storage.removeFromCart(Number(req.params.id));
     res.status(204).end();
   });
@@ -214,7 +283,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       for (const item of cartItems) {
-        if (item.product.stock < item.quantity) {
+        if ((item.product.stock ?? 0) < item.quantity) {
           return res.status(400).json({ message: `Stock insuffisant pour ${item.product.name}. Disponible: ${item.product.stock}, demandé: ${item.quantity}` });
         }
       }
@@ -235,29 +304,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         price: item.product.price,
       }));
 
-      // Validate & apply promo code server-side
+      // Recalculate the subtotal and discount on the server. Never trust
+      // the total sent by the browser.
+      const cartTotal = cartItems.reduce(
+        (sum, item) => sum + Number(item.product.price) * item.quantity,
+        0,
+      );
       let promoCode = input.promoCode;
-      let discount = input.discount;
+      let discount = "0";
+      let validPromo: Awaited<ReturnType<typeof storage.validatePromoCode>> = null;
       if (promoCode) {
-        const promo = await storage.validatePromoCode(promoCode);
-        if (!promo) {
+        validPromo = await storage.validatePromoCode(promoCode);
+        if (!validPromo) {
           promoCode = undefined;
-          discount = undefined;
         } else {
-          const cartTotal = cartItems.reduce((s, i) => s + Number(i.product.price) * i.quantity, 0);
-          const computedDiscount = promo.discountType === "percent"
-            ? Math.round((cartTotal * Number(promo.discountValue)) / 100)
-            : Math.min(Number(promo.discountValue), cartTotal);
+          const computedDiscount = validPromo.discountType === "percent"
+            ? Math.round((cartTotal * Number(validPromo.discountValue)) / 100)
+            : Math.min(Number(validPromo.discountValue), cartTotal);
           discount = computedDiscount.toString();
-          input = { ...input, total: Math.max(0, cartTotal - computedDiscount).toString() };
         }
       }
 
+      input = {
+        ...input,
+        total: Math.max(0, cartTotal - Number(discount)).toString(),
+        discount,
+      };
       const order = await storage.createOrder({ ...input, promoCode, discount }, orderItems);
 
-      if (promoCode) {
-        const promo = await storage.validatePromoCode(promoCode);
-        if (promo) await storage.incrementPromoCodeUses(promo.id);
+      if (validPromo) {
+        await storage.incrementPromoCodeUses(validPromo.id);
       }
 
       // Clear cart: use userId when logged in, sessionId for guests
@@ -270,34 +346,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get(api.orders.list.path, async (req, res) => {
-    const orders = await storage.getOrders(req.params.sessionId);
+  app.get(api.orders.list.path, requireAuth, async (req, res) => {
+    const user = await storage.getUserById(req.session.userId);
+    if (!user) return res.status(401).json({ message: "Utilisateur introuvable." });
+    const orders = await storage.getUserOrders(user.email);
     res.json(orders);
   });
 
   app.get(api.orders.get.path, async (req, res) => {
-    const order = await storage.getOrder(Number(req.params.id));
-    if (!order) return res.status(404).json({ message: 'Commande introuvable' });
+    const order = await authorizeOrder(req, res, Number(req.params.id));
+    if (!order) return;
     res.json(order);
   });
 
   app.get('/api/orders/:id/items', async (req, res) => {
+    const order = await authorizeOrder(req, res, Number(req.params.id));
+    if (!order) return;
     const items = await storage.getOrderItems(Number(req.params.id));
     res.json(items);
   });
 
-  app.get(api.orders.allOrders.path, async (req, res) => {
+  app.get(api.orders.allOrders.path, requireAdmin, async (req, res) => {
     const allOrders = await storage.getAllOrders();
     res.json(allOrders);
   });
 
   // ── ADMIN ────────────────────────────────────────────────────
-  app.get(api.admin.stats.path, async (_req, res) => {
+  app.get(api.admin.stats.path, requireAdmin, async (_req, res) => {
     const stats = await storage.getAdminStats();
     res.json(stats);
   });
 
-  app.patch(api.admin.updateProduct.path, async (req, res) => {
+  app.patch(api.admin.updateProduct.path, requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const input = api.admin.updateProduct.input.parse(req.body);
@@ -310,13 +390,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete(api.admin.deleteProduct.path, async (req, res) => {
+  app.delete(api.admin.deleteProduct.path, requireAdmin, async (req, res) => {
     const deleted = await storage.deleteProduct(Number(req.params.id));
     if (!deleted) return res.status(404).json({ message: 'Produit introuvable' });
     res.status(204).send();
   });
 
-  app.patch(api.admin.updateOrderStatus.path, async (req, res) => {
+  app.patch(api.admin.updateOrderStatus.path, requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const input = api.admin.updateOrderStatus.input.parse(req.body);
@@ -329,13 +409,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post(api.admin.approveOrder.path, async (req, res) => {
+  app.post(api.admin.approveOrder.path, requireAdmin, async (req, res) => {
     const order = await storage.updateOrderApprovalStatus(Number(req.params.id), "approved");
     if (!order) return res.status(404).json({ message: 'Commande introuvable' });
     res.json(order);
   });
 
-  app.post(api.admin.rejectOrder.path, async (req, res) => {
+  app.post(api.admin.rejectOrder.path, requireAdmin, async (req, res) => {
     try {
       const input = z.object({ reason: z.string() }).parse(req.body);
       const order = await storage.updateOrderApprovalStatus(Number(req.params.id), "rejected", input.reason);
@@ -347,22 +427,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get(api.orders.userOrders.path, async (req, res) => {
-    const orders = await storage.getUserOrders(req.params.email);
+  app.get(api.orders.userOrders.path, requireAuth, async (req, res) => {
+    const user = await storage.getUserById(req.session.userId);
+    if (!user) return res.status(401).json({ message: "Utilisateur introuvable." });
+    const orders = await storage.getUserOrders(user.email);
     res.json(orders);
   });
 
   // ── USER PROFILE ─────────────────────────────────────────────
-  app.get(api.user.getProfile.path, async (req, res) => {
-    const user = await storage.getUserById(Number(req.params.userId));
+  app.get(api.user.getProfile.path, requireAuth, async (req, res) => {
+    if (Number(req.params.userId) !== req.session.userId) {
+      return res.status(403).json({ message: "Accès non autorisé." });
+    }
+    const user = await storage.getUserById(req.session.userId);
     if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
     const { password, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
   });
 
-  app.patch(api.user.updateProfile.path, async (req, res) => {
+  app.patch(api.user.updateProfile.path, requireAuth, async (req, res) => {
     try {
       const userId = Number(req.params.userId);
+      if (userId !== req.session.userId) return res.status(403).json({ message: "Accès non autorisé." });
       const input = api.user.updateProfile.input.parse(req.body);
       const user = await storage.updateUserProfile(userId, input);
       if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' });
@@ -374,9 +460,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch(api.user.updatePassword.path, async (req, res) => {
+  app.patch(api.user.updatePassword.path, requireAuth, async (req, res) => {
     try {
       const userId = Number(req.params.userId);
+      if (userId !== req.session.userId) return res.status(403).json({ message: "Accès non autorisé." });
       const input = api.user.updatePassword.input.parse(req.body);
       const success = await storage.updateUserPassword(userId, input.currentPassword, input.newPassword);
       if (!success) return res.status(400).json({ message: 'Mot de passe actuel invalide' });
@@ -387,10 +474,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post(api.orders.cancel.path, async (req, res) => {
-    const order = await storage.cancelOrder(Number(req.params.id));
-    if (!order) return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
-    res.json(order);
+  app.post(api.orders.cancel.path, requireAuth, async (req, res) => {
+    const order = await authorizeOrder(req, res, Number(req.params.id));
+    if (!order) return;
+    const cancelledOrder = await storage.cancelOrder(Number(req.params.id));
+    if (!cancelledOrder) return res.status(400).json({ message: "Cette commande ne peut pas être annulée" });
+    res.json(cancelledOrder);
   });
 
   // ── CATEGORIES ───────────────────────────────────────────────
@@ -399,7 +488,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(cats);
   });
 
-  app.post('/api/admin/categories', async (req, res) => {
+  app.post('/api/admin/categories', requireAdmin, async (req, res) => {
     const { name } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ message: 'Nom de catégorie requis' });
     try {
@@ -411,17 +500,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete('/api/admin/categories/:id', async (req, res) => {
+  app.delete('/api/admin/categories/:id', requireAdmin, async (req, res) => {
     await storage.deleteCategory(Number(req.params.id));
     res.status(204).end();
   });
 
   // ── PROMO CODES ──────────────────────────────────────────────
-  app.get('/api/admin/promo-codes', async (_req, res) => {
+  app.get('/api/admin/promo-codes', requireAdmin, async (_req, res) => {
     res.json(await storage.getPromoCodes());
   });
 
-  app.post('/api/admin/promo-codes', async (req, res) => {
+  app.post('/api/admin/promo-codes', requireAdmin, async (req, res) => {
     try {
       const body = req.body;
       const promo = await storage.createPromoCode({
@@ -439,13 +528,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch('/api/admin/promo-codes/:id/toggle', async (req, res) => {
+  app.patch('/api/admin/promo-codes/:id/toggle', requireAdmin, async (req, res) => {
     const promo = await storage.togglePromoCode(Number(req.params.id), req.body.active);
     if (!promo) return res.status(404).json({ message: 'Code promo introuvable' });
     res.json(promo);
   });
 
-  app.delete('/api/admin/promo-codes/:id', async (req, res) => {
+  app.delete('/api/admin/promo-codes/:id', requireAdmin, async (req, res) => {
     await storage.deletePromoCode(Number(req.params.id));
     res.status(204).end();
   });
@@ -459,7 +548,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ── ADMIN ORDERS (detailed endpoint) ─────────────────────────
-  app.get('/api/admin/orders', async (_req, res) => {
+  app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
     const allOrders = await storage.getAllOrders();
     res.json(allOrders.reverse());
   });

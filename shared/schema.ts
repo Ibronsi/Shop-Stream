@@ -97,7 +97,7 @@ export const promoCodes = pgTable("promo_codes", {
 });
 
 // ── SCHEMAS ───────────────────────────────────────────────────
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true }).extend({
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true }).extend({
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Le mot de passe doit avoir au moins 6 caractères"),
   firstName: z.string().min(2, "Le prénom doit avoir au moins 2 caractères"),
@@ -106,7 +106,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
   phoneCountry: z.string().min(1, "Sélectionnez un pays"),
   city: z.string().min(2, "La ville est requise"),
   district: z.string().min(2, "Le quartier est requis"),
-}).omit({ name: true });
+});
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true }).extend({
   minOrderQty: z.number().int().min(1).optional().nullable(),

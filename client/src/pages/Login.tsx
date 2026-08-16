@@ -38,7 +38,7 @@ export default function Login() {
   });
 
   const onSubmit = (data: LoginForm) => {
-    login.mutate({ ...data, sessionId }, {
+    login.mutate({ ...data, sessionId: sessionId ?? undefined }, {
       onSuccess: () => {
         toast({ title: "Succès", description: "Connexion réussie" });
         navigate("/");

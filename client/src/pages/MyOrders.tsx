@@ -32,7 +32,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 
 function printOrderInvoice(order: Order) {
   const now = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  const orderDate = new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const orderDate = new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const paymentLabel = order.paymentMethod === "mynita" ? "MyNita (97120634)" : order.paymentMethod === "amanata" ? "My Amanata (97120634)" : "À la livraison";
   const statusLabel = STATUS_LABELS[order.approvalStatus]?.label ?? order.approvalStatus;
 
@@ -198,7 +198,7 @@ export default function MyOrders() {
     );
   }
 
-  const sortedOrders = [...(orders || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sortedOrders = [...(orders || [])].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
 
   return (
     <div className="min-h-screen bg-background">
@@ -234,7 +234,7 @@ export default function MyOrders() {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                       <p className="text-sm mt-1">
                         Paiement : <span className="font-medium">

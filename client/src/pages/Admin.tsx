@@ -13,6 +13,7 @@ import { Loader2, Plus, ChevronLeft, ImagePlus, Link2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import type { Category } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 const FALLBACK_CATEGORIES = ["Électronique", "Mode", "Accessoires", "Photographie", "Audio", "Maison"];
 
@@ -76,7 +77,7 @@ export default function Admin() {
         const base64 = reader.result as string;
         setImagePreview(base64);
 
-        const res = await fetch("/api/upload", {
+        const res = await apiFetch("/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageData: base64, fileName: file.name }),

@@ -6,6 +6,10 @@ export const errorSchemas = {
     message: z.string(),
     field: z.string().optional(),
   }),
+  badRequest: z.object({
+    message: z.string(),
+    field: z.string().optional(),
+  }),
   notFound: z.object({
     message: z.string(),
   }),

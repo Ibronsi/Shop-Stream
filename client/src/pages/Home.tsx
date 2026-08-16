@@ -25,7 +25,7 @@ export default function Home() {
   // Use admin categories if available, otherwise derive from products
   const CATEGORIES = categoriesData && categoriesData.length > 0
     ? categoriesData.map(c => c.name)
-    : [...new Set((allProducts || []).map(p => p.category))].sort();
+    : Array.from(new Set((allProducts || []).map(p => p.category))).sort();
   const [search, setSearch] = useState("");
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(500000);

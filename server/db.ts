@@ -7,6 +7,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 const url = new URL(process.env.DATABASE_URL);
+const sslMode = url.searchParams.get("sslmode");
+const useSsl = process.env.DB_SSL === "true" || (
+  process.env.DB_SSL !== "false" && sslMode === "require"
+);
 
 export const pool = new Pool({ 
   host: url.hostname,
@@ -14,7 +18,7 @@ export const pool = new Pool({
   user: url.username,
   password: url.password,
   database: url.pathname.slice(1),
-  ssl: { rejectUnauthorized: false }
+  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle({ client: pool, schema });

@@ -5,6 +5,7 @@ import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Loader2, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
+import { assetUrl } from "@/lib/api";
 
 export default function Cart() {
   useSEO({
@@ -74,7 +75,7 @@ export default function Cart() {
               >
                 <div className="w-24 h-24 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
                   <img
-                    src={item.product.imageUrl}
+                    src={assetUrl(item.product.imageUrl)}
                     alt={item.product.name}
                     className="w-full h-full object-cover"
                   />

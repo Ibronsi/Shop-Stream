@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import type { PromoCode } from "@shared/schema";
+import { apiFetch, assetUrl } from "@/lib/api";
 
 const checkoutSchema = z.object({
   email: z.string().email("Veuillez entrer une adresse email valide"),
@@ -93,7 +94,7 @@ export default function Checkout() {
     setPromoLoading(true);
     setPromoError("");
     try {
-      const res = await fetch("/api/promo-codes/validate", {
+      const res = await apiFetch("/api/promo-codes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: promoInput.trim() }),
@@ -363,7 +364,7 @@ export default function Checkout() {
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4 items-center">
                     <div className="h-16 w-16 bg-white rounded-md overflow-hidden flex-shrink-0">
-                      <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                      <img src={assetUrl(item.product.imageUrl)} alt={item.product.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 text-sm">
                       <p className="font-semibold text-foreground">{item.product.name}</p>

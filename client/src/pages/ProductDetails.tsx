@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
+import { assetUrl } from "@/lib/api";
 
 export default function ProductDetails() {
   const [, params] = useRoute("/product/:id");
@@ -67,7 +68,7 @@ export default function ProductDetails() {
           {/* Image Section */}
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-secondary shadow-lg">
             <img
-              src={product.imageUrl}
+              src={assetUrl(product.imageUrl)}
               alt={product.name}
               className="w-full h-full object-cover"
             />
@@ -108,25 +109,25 @@ export default function ProductDetails() {
                   onClick={() => setQuantity((q) => Math.max(minQty, q - 1))}
                   disabled={quantity <= minQty}
                   data-testid="button-qty-minus">−</Button>
-                <input type="number" value={quantity} min={minQty} max={product.stock}
+                <input type="number" value={quantity} min={minQty} max={product.stock ?? 0}
                   onChange={(e) => setQuantity(Math.max(minQty, parseInt(e.target.value) || minQty))}
                   className="w-20 h-10 text-center border border-input rounded-md bg-background text-foreground"
                   data-testid="input-quantity"
                 />
                 <Button type="button" variant="outline" size="icon" className="h-10 w-10"
-                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                  disabled={quantity >= product.stock}
+                  onClick={() => setQuantity((q) => Math.min(product.stock ?? 0, q + 1))}
+                  disabled={quantity >= (product.stock ?? 0)}
                   data-testid="button-qty-plus">+</Button>
               </div>
             </div>
 
             {/* Stock Status */}
             <div className="mb-8">
-              {product.stock > 0 ? (
+              {(product.stock ?? 0) > 0 ? (
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-green-500"></div>
                   <span className="text-sm font-semibold text-green-600">
-                    {product.stock} en stock
+                    {product.stock ?? 0} en stock
                   </span>
                 </div>
               ) : (
@@ -146,7 +147,7 @@ export default function ProductDetails() {
             <div className="flex gap-4 mb-10">
               <Button 
                 onClick={handleAddToCart}
-                disabled={addToCart.isPending || product.stock === 0}
+                disabled={addToCart.isPending || (product.stock ?? 0) === 0}
                 size="lg"
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-lg font-semibold rounded-xl shadow-lg shadow-primary/20"
                 data-testid="button-add-to-cart"

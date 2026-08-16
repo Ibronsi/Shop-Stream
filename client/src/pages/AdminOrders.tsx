@@ -93,7 +93,7 @@ export default function AdminOrders() {
                         <p className="text-sm text-muted-foreground mb-1">Numéro de commande</p>
                         <p className="font-bold text-foreground"># {order.id}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(order.createdAt).toLocaleDateString("fr-FR", {
+                          {new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",

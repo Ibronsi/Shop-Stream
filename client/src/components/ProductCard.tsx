@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package } from "lucide-react";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
+import { assetUrl } from "@/lib/api";
 
 interface ProductCardProps {
   product: Product;
@@ -27,12 +28,12 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/product/${product.id}`} className="block">
         <div className="aspect-[4/3] overflow-hidden bg-secondary relative">
           <img
-            src={product.imageUrl}
+            src={assetUrl(product.imageUrl)}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          {product.stock === 0 && (
+          {(product.stock ?? 0) === 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="text-white font-bold text-lg">Rupture de stock</span>
             </div>
@@ -62,9 +63,9 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.description}
           </p>
           <div className="mb-3">
-            {product.stock > 0 ? (
+            {(product.stock ?? 0) > 0 ? (
               <span className="text-xs font-semibold text-green-600">
-                ✓ {product.stock} en stock
+                ✓ {product.stock ?? 0} en stock
               </span>
             ) : (
               <span className="text-xs font-semibold text-red-600">
@@ -75,7 +76,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="pt-2">
             <Button
               onClick={handleAddToCart}
-              disabled={addToCart.isPending || product.stock === 0}
+              disabled={addToCart.isPending || (product.stock ?? 0) === 0}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {addToCart.isPending ? (

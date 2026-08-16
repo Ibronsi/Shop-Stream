@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useSEO } from "@/hooks/use-seo";
 import { CheckCircle, Package, Loader2, Home, ClipboardList, Printer } from "lucide-react";
 import type { Order } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 type OrderItemDetail = {
   id: number;
@@ -18,7 +19,7 @@ type OrderItemDetail = {
 
 function printInvoice(order: Order, items: OrderItemDetail[]) {
   const now = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  const orderDate = new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const orderDate = new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const paymentLabel = order.paymentMethod === "mynita" ? "MyNita (97120634)" : order.paymentMethod === "amanata" ? "My Amanata (97120634)" : "À la livraison";
 
   const itemRows = items.map((item) => `
@@ -114,7 +115,7 @@ export default function OrderConfirmation() {
   const { data: order, isLoading: orderLoading } = useQuery<Order>({
     queryKey: ["/api/orders", orderId],
     queryFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await apiFetch(`/api/orders/${orderId}`);
       if (!res.ok) throw new Error("Commande introuvable");
       return res.json();
     },
@@ -124,7 +125,7 @@ export default function OrderConfirmation() {
   const { data: items, isLoading: itemsLoading } = useQuery<OrderItemDetail[]>({
     queryKey: ["/api/orders", orderId, "items"],
     queryFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}/items`);
+      const res = await apiFetch(`/api/orders/${orderId}/items`);
       if (!res.ok) throw new Error("Impossible de charger les articles");
       return res.json();
     },

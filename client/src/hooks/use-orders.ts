@@ -4,6 +4,7 @@ import type { InsertOrder } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
+import { apiFetch } from "@/lib/api";
 
 export function useCreateOrder() {
   const { toast } = useToast();
@@ -11,7 +12,7 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (order: InsertOrder) => {
-      const res = await fetch(api.orders.create.path, {
+      const res = await apiFetch(api.orders.create.path, {
         method: api.orders.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
@@ -27,7 +28,7 @@ export function useCreateOrder() {
       // Vider le panier de l'utilisateur après confirmation de la commande
       try {
         const clearUrl = buildUrl(api.cart.clear.path, { sessionId: variables.sessionId });
-        await fetch(clearUrl, { method: api.cart.clear.method });
+        await apiFetch(clearUrl, { method: api.cart.clear.method });
       } catch {
         // best-effort: la commande est déjà créée
       }

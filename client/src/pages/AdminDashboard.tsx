@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Category, PromoCode, Order } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 const STATUS_OPTIONS = [
   { value: "pending",   label: "En attente",      color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300" },
@@ -48,11 +49,11 @@ type TabId = "orders" | "products" | "categories" | "promos" | "accounting";
 function printAccountingReport(orders: Order[], stats: any) {
   const now = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const orderRows = [...orders]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
     .map((o) => `
       <tr>
         <td>#${o.id}</td>
-        <td>${new Date(o.createdAt).toLocaleDateString("fr-FR")}</td>
+        <td>${new Date(o.createdAt ?? 0).toLocaleDateString("fr-FR")}</td>
         <td>${o.email}</td>
         <td>${o.paymentMethod === "mynita" ? "MyNita" : o.paymentMethod === "amanata" ? "MyAmanata" : "Livraison"}</td>
         <td>${o.approvalStatus === "delivered" ? "Livrée" : o.approvalStatus === "cancelled" ? "Annulée" : o.approvalStatus === "rejected" ? "Rejetée" : o.approvalStatus === "preparing" ? "Préparation" : o.approvalStatus === "accepted" ? "Acceptée" : "En attente"}</td>
@@ -185,7 +186,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const sortedOrders = [...(orders || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sortedOrders = [...(orders || [])].sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
 
   const tabs: { id: TabId; label: string; icon: typeof ShoppingCart }[] = [
     { id: "orders",     label: "Commandes",   icon: ShoppingCart },
@@ -267,7 +268,7 @@ export default function AdminDashboard() {
                     </div>
                     <p className="text-sm text-muted-foreground truncate">{order.email}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {order.paymentMethod === "mynita" ? "Paiement MyNita" : order.paymentMethod === "amanata" ? "Paiement MyAmanata" : "Paiement à la livraison"}
@@ -352,7 +353,7 @@ export default function AdminDashboard() {
                       <td className="py-3 px-4 text-muted-foreground">{product.category}</td>
                       <td className="py-3 px-4 font-bold">{Number(product.price).toLocaleString("fr-FR")} CFA</td>
                       <td className="py-3 px-4">
-                        <span className={product.stock > 5 ? "text-green-600" : "text-red-600 font-semibold"}>{product.stock} unités</span>
+                        <span className={(product.stock ?? 0) > 5 ? "text-green-600" : "text-red-600 font-semibold"}>{product.stock ?? 0} unités</span>
                       </td>
                       <td className="py-3 px-4">
                         {product.minOrderQty && product.minOrderQty >= 2 ? (
@@ -588,7 +589,7 @@ export default function AdminDashboard() {
                     {sortedOrders.map((order) => (
                       <tr key={order.id} className="border-b border-border/40 hover:bg-secondary/20">
                         <td className="py-2 px-3 font-mono font-semibold">#{order.id}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{new Date(order.createdAt).toLocaleDateString("fr-FR")}</td>
+                        <td className="py-2 px-3 text-muted-foreground">{new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR")}</td>
                         <td className="py-2 px-3 text-muted-foreground truncate max-w-[140px]">{order.email}</td>
                         <td className="py-2 px-3">{order.paymentMethod === "mynita" ? "MyNita" : order.paymentMethod === "amanata" ? "MyAmanata" : "Livraison"}</td>
                         <td className="py-2 px-3"><StatusBadge status={order.approvalStatus} /></td>
@@ -666,7 +667,7 @@ function EditProductModal({
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result as string;
-      const res = await fetch("/api/upload", {
+      const res = await apiFetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageData: base64, fileName: file.name }),
@@ -779,7 +780,7 @@ function EditProductModal({
 // ── CLIENT INVOICE PRINT ──────────────────────────────────────────────────────
 function printClientInvoice(order: Order) {
   const now = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  const orderDate = new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const orderDate = new Date(order.createdAt ?? 0).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const paymentLabel = order.paymentMethod === "mynita" ? "MyNita (97120634)" : order.paymentMethod === "amanata" ? "My Amanata (97120634)" : "À la livraison";
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">

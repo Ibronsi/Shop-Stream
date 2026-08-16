@@ -2,11 +2,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { queryClient } from "@/lib/queryClient";
 import type { InsertUser } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 export function useRegister() {
   return useMutation({
     mutationFn: async (data: InsertUser) => {
-      const response = await fetch(api.auth.register.path, {
+      const response = await apiFetch(api.auth.register.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -20,7 +21,7 @@ export function useRegister() {
 export function useLogin() {
   return useMutation({
     mutationFn: async (data: { email: string; password: string; sessionId?: string }) => {
-      const response = await fetch(api.auth.login.path, {
+      const response = await apiFetch(api.auth.login.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -37,7 +38,7 @@ export function useLogin() {
 export function useLogout() {
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch(api.auth.logout.path, { method: "POST" });
+      const response = await apiFetch(api.auth.logout.path, { method: "POST" });
       if (!response.ok) throw new Error("Logout failed");
       return response.json();
     },
@@ -52,7 +53,7 @@ export function useCurrentUser() {
     queryKey: [api.auth.me.path],
     queryFn: async () => {
       try {
-        const response = await fetch(api.auth.me.path);
+        const response = await apiFetch(api.auth.me.path);
         if (!response.ok) return null;
         return response.json();
       } catch {

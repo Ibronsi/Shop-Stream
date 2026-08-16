@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { InsertProduct, Order, Product } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 export function useCreateProduct() {
   return useMutation({
@@ -19,7 +20,7 @@ export function useAllOrders() {
   return useQuery({
     queryKey: [api.orders.allOrders.path],
     queryFn: async () => {
-      const response = await fetch(api.orders.allOrders.path);
+      const response = await apiFetch(api.orders.allOrders.path);
       if (!response.ok) throw new Error("Failed to fetch orders");
       return response.json() as Promise<Order[]>;
     },
@@ -33,7 +34,7 @@ export function useAdminStats() {
   return useQuery({
     queryKey: [api.admin.stats.path],
     queryFn: async () => {
-      const response = await fetch(api.admin.stats.path);
+      const response = await apiFetch(api.admin.stats.path);
       if (!response.ok) throw new Error("Failed to fetch stats");
       return response.json();
     },
@@ -55,7 +56,7 @@ export function useUpdateProduct() {
 export function useDeleteProduct() {
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(api.admin.deleteProduct.path.replace(":id", String(id)), {
+      const response = await apiFetch(api.admin.deleteProduct.path.replace(":id", String(id)), {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete product");

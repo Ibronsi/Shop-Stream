@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import type { InsertCartItem } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 export function useCart(sessionId: string | null) {
   return useQuery({
@@ -9,7 +10,7 @@ export function useCart(sessionId: string | null) {
     queryFn: async () => {
       if (!sessionId) return [];
       const url = buildUrl(api.cart.list.path, { sessionId });
-      const res = await fetch(url);
+      const res = await apiFetch(url);
       if (!res.ok) throw new Error("Failed to fetch cart");
       return api.cart.list.responses[200].parse(await res.json());
     },
@@ -23,7 +24,7 @@ export function useAddToCart() {
 
   return useMutation({
     mutationFn: async (item: InsertCartItem) => {
-      const res = await fetch(api.cart.add.path, {
+      const res = await apiFetch(api.cart.add.path, {
         method: api.cart.add.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(item),
@@ -54,9 +55,12 @@ export function useUpdateCartItem() {
   return useMutation({
     mutationFn: async ({ id, quantity, sessionId }: { id: number; quantity: number; sessionId: string }) => {
       const url = buildUrl(api.cart.update.path, { id });
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: api.cart.update.method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cart-Session": sessionId,
+        },
         body: JSON.stringify({ quantity }),
       });
       if (!res.ok) throw new Error("Failed to update cart item");
@@ -73,9 +77,12 @@ export function useRemoveFromCart() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id }: { id: number; sessionId: string }) => {
+    mutationFn: async ({ id, sessionId }: { id: number; sessionId: string }) => {
       const url = buildUrl(api.cart.delete.path, { id });
-      const res = await fetch(url, { method: api.cart.delete.method });
+      const res = await apiFetch(url, {
+        method: api.cart.delete.method,
+        headers: { "X-Cart-Session": sessionId },
+      });
       if (!res.ok) throw new Error("Failed to remove item");
     },
     onSuccess: (_, variables) => {
@@ -94,7 +101,7 @@ export function useClearCart() {
   return useMutation({
     mutationFn: async (sessionId: string) => {
       const url = buildUrl(api.cart.clear.path, { sessionId });
-      const res = await fetch(url, { method: api.cart.clear.method });
+      const res = await apiFetch(url, { method: api.cart.clear.method });
       if (!res.ok) throw new Error("Failed to clear cart");
     },
     onSuccess: (_, sessionId) => {
