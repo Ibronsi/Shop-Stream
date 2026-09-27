@@ -113,7 +113,11 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getUserByEmail(user.email);
     if (existing) return null;
     const hashedPassword = await bcrypt.hash(user.password, 10);
-    const [newUser] = await db.insert(users).values({ ...user, password: hashedPassword }).returning();
+    const name = user.name || [user.firstName, user.lastName]
+      .filter((part): part is string => Boolean(part))
+      .join(" ")
+      .trim();
+    const [newUser] = await db.insert(users).values({ ...user, name, password: hashedPassword }).returning();
     return newUser;
   }
 

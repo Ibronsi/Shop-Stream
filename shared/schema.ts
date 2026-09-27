@@ -112,6 +112,7 @@ export const promoCodes = pgTable("promo_codes", {
 
 // ── SCHEMAS ───────────────────────────────────────────────────
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, role: true }).extend({
+  name: z.string().min(2, "Le nom doit avoir au moins 2 caractères").optional(),
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Le mot de passe doit avoir au moins 6 caractères"),
   firstName: z.string().min(2, "Le prénom doit avoir au moins 2 caractères"),
