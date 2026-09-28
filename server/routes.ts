@@ -137,6 +137,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const sessionId = req.body.sessionId as string | undefined;
       if (sessionId) await storage.mergeCartOnLogin(sessionId, user.id);
       req.session.userId = user.id;
+      // Les sessions administrateur expirent après 1 heure (24 h pour les clients).
+      if (user.role === "admin") req.session.cookie.maxAge = 60 * 60 * 1000;
       req.session.save((err) => {
         if (err) return res.status(500).json({ message: "Session save failed" });
         const { password, ...safeUser } = user;
