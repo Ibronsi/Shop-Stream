@@ -5,6 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
+import { pool } from "./db";
 
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -45,6 +46,22 @@ async function authorizeOrder(req: Request, res: Response, orderId: number) {
   return order;
 }
 
+
+// Les images sont stockées en base (le disque de Render est effacé à chaque redéploiement).
+async function ensureImagesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS uploaded_images (
+      name TEXT PRIMARY KEY,
+      content_type TEXT NOT NULL,
+      data BYTEA NOT NULL,
+      created_at TIMESTAMP DEFAULT now()
+    )`);
+  // Accès public via l'API Supabase bloqué ; seul le backend (propriétaire) y accède.
+  await pool.query(`ALTER TABLE uploaded_images ENABLE ROW LEVEL SECURITY`);
+}
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
 async function seedDatabase() {
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
@@ -82,6 +99,7 @@ async function seedDatabase() {
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  await ensureImagesTable();
   await seedDatabase();
 
   // ── IMAGE UPLOAD ─────────────────────────────────────────────
@@ -91,24 +109,43 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!imageData || !fileName) {
         return res.status(400).json({ message: "Données image manquantes" });
       }
-      if (
-        typeof imageData !== "string" ||
-        !/^data:image\/(png|jpe?g|webp);base64,/i.test(imageData) ||
-        imageData.length > 8 * 1024 * 1024
-      ) {
-        return res.status(400).json({ message: "Image invalide ou trop volumineuse." });
+      const match = typeof imageData === "string"
+        ? imageData.match(/^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/i)
+        : null;
+      if (!match) {
+        return res.status(400).json({ message: "Image invalide (formats acceptés : JPG, PNG, WebP)." });
       }
-      // Strip base64 header
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-      const ext = imageData.match(/data:image\/(\w+);/)?.[1] || "jpg";
-      const safeName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}.${ext}`;
-      const filePath = path.join(UPLOADS_DIR, safeName);
-      fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+      const ext = match[1].toLowerCase().replace("jpeg", "jpg");
+      const buffer = Buffer.from(match[2], "base64");
+      if (buffer.length === 0 || buffer.length > MAX_IMAGE_BYTES) {
+        return res.status(400).json({ message: "Image trop volumineuse (2 Mo maximum)." });
+      }
+      const contentType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+      const baseName = String(fileName).replace(/\.[^.]*$/, "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40) || "image";
+      const safeName = `${Date.now()}_${baseName}.${ext}`;
+      await pool.query(
+        "INSERT INTO uploaded_images (name, content_type, data) VALUES ($1, $2, $3)",
+        [safeName, contentType, buffer],
+      );
       const publicApiUrl = (process.env.PUBLIC_API_URL || "").replace(/\/+$/, "");
       res.json({ url: `${publicApiUrl}/uploads/${safeName}` });
     } catch (err) {
+      console.error("Erreur upload image:", err);
       res.status(500).json({ message: "Erreur lors de l'upload" });
     }
+  });
+
+  app.get('/uploads/:name', async (req, res) => {
+    const name = req.params.name;
+    if (!/^[A-Za-z0-9._-]+$/.test(name)) return res.status(404).end();
+    const result = await pool.query("SELECT content_type, data FROM uploaded_images WHERE name = $1", [name]);
+    if (result.rowCount === 0) return res.status(404).end();
+    const { content_type, data } = result.rows[0];
+    res.setHeader("Content-Type", content_type);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.send(data);
   });
 
   // ── AUTH ─────────────────────────────────────────────────────

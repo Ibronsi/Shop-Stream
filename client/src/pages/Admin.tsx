@@ -60,42 +60,64 @@ export default function Admin() {
     if (name === "imageUrl") setImagePreview(value);
   };
 
+  // Réduit la photo (max 1200 px, JPEG) avant l'envoi : plus rapide en 4G et moins lourd en base.
+  const compressImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); return reject(new Error("canvas")); }
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image")); };
+      img.src = url;
+    });
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 5 Mo", variant: "destructive" });
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Fichier invalide", description: "Choisissez une image (JPG, PNG ou WebP)", variant: "destructive" });
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 15 Mo", variant: "destructive" });
       return;
     }
 
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        setImagePreview(base64);
+      const base64 = await compressImage(file);
+      setImagePreview(base64);
 
-        const res = await apiFetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageData: base64, fileName: file.name }),
-        });
+      const res = await apiFetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: base64, fileName: file.name }),
+      });
 
-        if (res.ok) {
-          const { url } = await res.json();
-          setFormData(prev => ({ ...prev, imageUrl: url }));
-          toast({ title: "Photo uploadée avec succès" });
-        } else {
-          toast({ title: "Erreur upload", description: "Impossible d'uploader la photo", variant: "destructive" });
-        }
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+      if (res.ok) {
+        const { url } = await res.json();
+        setFormData(prev => ({ ...prev, imageUrl: url }));
+        toast({ title: "Photo uploadée avec succès" });
+      } else {
+        toast({ title: "Erreur upload", description: "Impossible d'uploader la photo", variant: "destructive" });
+      }
     } catch {
+      toast({ title: "Erreur", description: "Impossible de lire ou d'envoyer la photo", variant: "destructive" });
+    } finally {
       setUploading(false);
-      toast({ title: "Erreur", description: "Impossible de lire le fichier", variant: "destructive" });
     }
   };
 

@@ -69,6 +69,9 @@ app.use(
   }),
 );
 
+// Les photos arrivent en base64 : on autorise un corps plus gros sur cette seule route.
+app.use("/api/upload", express.json({ limit: "4mb" }));
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
