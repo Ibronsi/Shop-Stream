@@ -84,7 +84,7 @@ export function Navbar() {
               <Package className="h-5 w-5" />
             </div>
             <span className="font-display font-bold text-xl tracking-tight text-foreground">
-              LuxeStore
+              Shop-Stream
             </span>
           </Link>
 
@@ -122,7 +122,7 @@ export function Navbar() {
             <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
               <Package className="h-4 w-4" />
             </div>
-            <span className="font-display font-bold text-lg">LuxeStore</span>
+            <span className="font-display font-bold text-lg">Shop-Stream</span>
           </div>
           <Button variant="ghost" size="icon" onClick={close} data-testid="button-close-menu">
             <X className="h-5 w-5" />

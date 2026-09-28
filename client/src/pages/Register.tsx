@@ -43,7 +43,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function Register() {
   useSEO({
     title: "Register",
-    description: "Create a new account on LuxeStore to start shopping and save your preferences.",
+    description: "Create a new account on Shop-Stream to start shopping and save your preferences.",
     keywords: "register, signup, account creation",
   });
 

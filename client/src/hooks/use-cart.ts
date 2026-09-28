@@ -35,14 +35,14 @@ export function useAddToCart() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.cart.list.path, variables.sessionId] });
       toast({
-        title: "Added to cart",
-        description: "The item has been added to your cart.",
+        title: "Ajouté au panier",
+        description: "L'article a été ajouté à votre panier.",
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to add item to cart.",
+        title: "Erreur",
+        description: "Impossible d'ajouter l'article au panier.",
         variant: "destructive",
       });
     },
@@ -88,8 +88,8 @@ export function useRemoveFromCart() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.cart.list.path, variables.sessionId] });
       toast({
-        title: "Item removed",
-        description: "Item has been removed from your cart.",
+        title: "Article retiré",
+        description: "L'article a été retiré de votre panier.",
       });
     },
   });

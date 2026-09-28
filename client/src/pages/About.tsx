@@ -3,22 +3,22 @@ import { useSEO } from "@/hooks/use-seo";
 
 export default function About() {
   useSEO({
-    title: "À Propos de LuxeStore | Marché Nigérien",
-    description: "Découvrez LuxeStore, votre plateforme e-commerce de confiance au Niger.",
-    keywords: "à propos, luxestore, niger, ecommerce",
+    title: "À Propos de Shop-Stream | Marché Nigérien",
+    description: "Découvrez Shop-Stream, votre plateforme e-commerce de confiance au Niger.",
+    keywords: "à propos, shop-stream, niger, ecommerce",
   });
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-4xl font-bold mb-8">À Propos de LuxeStore</h1>
+        <h1 className="text-4xl font-bold mb-8">À Propos de Shop-Stream</h1>
 
         <section className="space-y-8 text-foreground">
           <div>
             <h2 className="text-2xl font-semibold mb-3">Notre Histoire</h2>
             <p className="text-muted-foreground leading-relaxed">
-              LuxeStore est née d'une vision simple : apporter une expérience d'achat en ligne de qualité au marché nigérien. 
+              Shop-Stream est née d'une vision simple : apporter une expérience d'achat en ligne de qualité au marché nigérien. 
               Nous croyons que chaque client mérite un service fiable, des produits de qualité et des paiements sécurisés adaptés à la région.
             </p>
           </div>
@@ -56,7 +56,7 @@ export default function About() {
           <div>
             <h2 className="text-2xl font-semibold mb-3">Paiements Locaux</h2>
             <p className="text-muted-foreground leading-relaxed">
-              LuxeStore accepte les paiements via <strong>MyNita</strong> et <strong>MyAmanata</strong>, les solutions de paiement mobiles les plus populaires au Niger. 
+              Shop-Stream accepte les paiements via <strong>MyNita</strong> et <strong>MyAmanata</strong>, les solutions de paiement mobiles les plus populaires au Niger. 
               Nous facilitons ainsi vos transactions de manière simple et sécurisée.
             </p>
           </div>

@@ -261,6 +261,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete(api.wishlist.delete.path, async (req, res) => {
+    const ownedItems = await storage.getWishlist(req.header("X-Cart-Session") || "");
+    if (!ownedItems.some((item) => item.id === Number(req.params.id))) {
+      return res.status(403).json({ message: "Élément de wishlist non autorisé." });
+    }
     await storage.removeFromWishlist(Number(req.params.id));
     res.status(204).end();
   });

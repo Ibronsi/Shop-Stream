@@ -24,9 +24,9 @@ type ContactForm = z.infer<typeof contactSchema>;
 
 export default function Contact() {
   useSEO({
-    title: "Nous Contacter | LuxeStore",
-    description: "Contactez LuxeStore pour toute question ou assistance.",
-    keywords: "contact, aide, support, luxestore",
+    title: "Nous Contacter | Shop-Stream",
+    description: "Contactez Shop-Stream pour toute question ou assistance.",
+    keywords: "contact, aide, support, shop-stream",
   });
 
   const { toast } = useToast();

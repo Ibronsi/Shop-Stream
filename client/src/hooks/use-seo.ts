@@ -19,7 +19,7 @@ export function useSEO({
 }: SEOProps) {
   useEffect(() => {
     // Update title
-    document.title = `${title} | LuxeStore`;
+    document.title = `${title} | Shop-Stream`;
 
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');

@@ -35,7 +35,7 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t border-border/40 pt-6 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 LuxeStore. Tous droits réservés. | Niger</p>
+          <p>&copy; 2026 Shop-Stream. Tous droits réservés. | Niger</p>
         </div>
       </div>
     </footer>

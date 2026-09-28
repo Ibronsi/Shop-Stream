@@ -297,9 +297,9 @@ export default function Home() {
 
       <footer className="bg-secondary/50 py-12 mt-20 border-t border-border/50">
         <div className="container mx-auto px-4 text-center">
-          <p className="font-display text-xl font-bold text-primary mb-4">LuxeStore</p>
+          <p className="font-display text-xl font-bold text-primary mb-4">Shop-Stream</p>
           <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} LuxeStore. Tous droits réservés.
+            © {new Date().getFullYear()} Shop-Stream. Tous droits réservés.
           </p>
         </div>
       </footer>

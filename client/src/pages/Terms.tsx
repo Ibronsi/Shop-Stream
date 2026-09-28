@@ -3,8 +3,8 @@ import { useSEO } from "@/hooks/use-seo";
 
 export default function Terms() {
   useSEO({
-    title: "Conditions d'Utilisation | LuxeStore",
-    description: "Consultez les conditions d'utilisation de LuxeStore.",
+    title: "Conditions d'Utilisation | Shop-Stream",
+    description: "Consultez les conditions d'utilisation de Shop-Stream.",
     keywords: "conditions, utilisation, termes, politique",
   });
 
@@ -18,14 +18,14 @@ export default function Terms() {
           <div>
             <h2 className="text-2xl font-semibold mb-3">1. Acceptation des conditions</h2>
             <p className="text-muted-foreground">
-              En utilisant LuxeStore, vous acceptez l'intégralité de ces conditions d'utilisation. Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser le site.
+              En utilisant Shop-Stream, vous acceptez l'intégralité de ces conditions d'utilisation. Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser le site.
             </p>
           </div>
 
           <div>
             <h2 className="text-2xl font-semibold mb-3">2. Utilisation du service</h2>
             <p className="text-muted-foreground">
-              Vous vous engagez à utiliser LuxeStore uniquement à des fins légales et de manière qui ne viole pas les droits d'autrui ou ne restreint leur utilisation et leur jouissance du site.
+              Vous vous engagez à utiliser Shop-Stream uniquement à des fins légales et de manière qui ne viole pas les droits d'autrui ou ne restreint leur utilisation et leur jouissance du site.
             </p>
           </div>
 
@@ -39,7 +39,7 @@ export default function Terms() {
           <div>
             <h2 className="text-2xl font-semibold mb-3">4. Produits et prix</h2>
             <p className="text-muted-foreground">
-              Tous les produits sont présentés à titre informatif. Les prix sont sujets à modification sans préavis. LuxeStore se réserve le droit de limiter les quantités.
+              Tous les produits sont présentés à titre informatif. Les prix sont sujets à modification sans préavis. Shop-Stream se réserve le droit de limiter les quantités.
             </p>
           </div>
 
@@ -53,14 +53,14 @@ export default function Terms() {
           <div>
             <h2 className="text-2xl font-semibold mb-3">6. Limitation de responsabilité</h2>
             <p className="text-muted-foreground">
-              LuxeStore ne sera pas responsable des dommages directs, indirects, accessoires ou consécutifs résultant de votre utilisation ou de votre incapacité à utiliser le site.
+              Shop-Stream ne sera pas responsable des dommages directs, indirects, accessoires ou consécutifs résultant de votre utilisation ou de votre incapacité à utiliser le site.
             </p>
           </div>
 
           <div>
             <h2 className="text-2xl font-semibold mb-3">7. Modifications des conditions</h2>
             <p className="text-muted-foreground">
-              LuxeStore se réserve le droit de modifier ces conditions à tout moment. Les modifications seront effectives dès leur publication sur le site.
+              Shop-Stream se réserve le droit de modifier ces conditions à tout moment. Les modifications seront effectives dès leur publication sur le site.
             </p>
           </div>
 
