@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
+    <script>
+      // Ancienne adresse du site : on redirige immédiatement vers la nouvelle,
+      // avant que le reste de la page (et le code de l'application) ne se charge.
+      (function () {
+        var oldHosts = ["shop-stream-two.vercel.app"];
+        var newHost = "shop-stream-tree.vercel.app";
+        if (oldHosts.indexOf(window.location.hostname) !== -1) {
+          window.location.replace("https://" + newHost + window.location.pathname + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
