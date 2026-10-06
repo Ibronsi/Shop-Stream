@@ -4,13 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
     <script>
-      // Ancienne adresse du site : on redirige immédiatement vers la nouvelle,
-      // avant que le reste de la page (et le code de l'application) ne se charge.
+      // Ancienne adresse bloquée : on arrête le chargement de la page ici-même,
+      // avant que le reste du HTML (et donc le code de l'application) ne soit lu par le navigateur.
       (function () {
-        var oldHosts = ["shop-stream-two.vercel.app"];
-        var newHost = "shop-stream-tree.vercel.app";
-        if (oldHosts.indexOf(window.location.hostname) !== -1) {
-          window.location.replace("https://" + newHost + window.location.pathname + window.location.search + window.location.hash);
+        var blockedHosts = ["shop-stream-two.vercel.app"];
+        if (blockedHosts.indexOf(window.location.hostname) !== -1) {
+          document.open();
+          document.write(
+            '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">' +
+            '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+            '<title>Indisponible</title></head>' +
+            '<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+            'font-family:system-ui,sans-serif;background:#fafafa;color:#333;text-align:center;padding:24px;">' +
+            '<div><h1 style="font-size:1.4rem;margin-bottom:8px;">Page indisponible</h1>' +
+            '<p style="color:#777;">Cette adresse n\'est plus utilisée.</p></div></body></html>'
+          );
+          document.close();
+          window.stop();
         }
       })();
     </script>
