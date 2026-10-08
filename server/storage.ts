@@ -2,6 +2,7 @@ import { db } from "./db";
 import {
   users,
   products,
+  productVariants,
   cartItems,
   orders,
   orderItems,
@@ -12,6 +13,8 @@ import {
   type InsertUser,
   type Product,
   type InsertProduct,
+  type ProductVariant,
+  type InsertProductVariant,
   type CartItem,
   type InsertCartItem,
   type Order,
@@ -26,7 +29,7 @@ import {
   type PromoCode,
   type InsertPromoCode,
 } from "@shared/schema";
-import { eq, and, ilike, or, isNull, gte, sql, type SQL } from "drizzle-orm";
+import { eq, and, ilike, or, isNull, gte, sql, desc, type SQL } from "drizzle-orm";
 import * as bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -43,6 +46,13 @@ export interface IStorage {
   getProducts(search?: string, category?: string, sortBy?: string): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
+
+  // Variantes (taille / couleur)
+  getProductVariants(productId: number): Promise<ProductVariant[]>;
+  getVariant(id: number): Promise<ProductVariant | undefined>;
+  createProductVariant(variant: InsertProductVariant & { productId: number }): Promise<ProductVariant>;
+  updateProductVariant(id: number, updates: Partial<InsertProductVariant>): Promise<ProductVariant | undefined>;
+  deleteProductVariant(id: number): Promise<void>;
   getCategories(): Promise<string[]>;
   decrementProductStock(productId: number, quantity: number): Promise<boolean>;
 
@@ -138,13 +148,16 @@ export class DatabaseStorage implements IStorage {
     if (category) {
       conditions.push(eq(products.category, category));
     }
-    const allProducts = conditions.length > 0
-      ? await db.select().from(products).where(and(...conditions))
-      : await db.select().from(products);
+    // Par défaut (et pour "newest"), on trie explicitement du plus récent au plus ancien :
+    // sans ORDER BY, Postgres ne garantit aucun ordre précis, ce qui faisait apparaître
+    // les nouveaux produits en bas du catalogue au lieu du haut.
+    const query = conditions.length > 0
+      ? db.select().from(products).where(and(...conditions)).orderBy(desc(products.id))
+      : db.select().from(products).orderBy(desc(products.id));
+    const allProducts = await query;
     if (sortBy === 'price-asc') return allProducts.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     if (sortBy === 'price-desc') return allProducts.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
     if (sortBy === 'rating') return allProducts.sort((a, b) => parseFloat(b.rating || '0') - parseFloat(a.rating || '0'));
-    if (sortBy === 'newest') return allProducts.reverse();
     return allProducts;
   }
 
@@ -156,6 +169,29 @@ export class DatabaseStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const [newProduct] = await db.insert(products).values(product).returning();
     return newProduct;
+  }
+
+  async getProductVariants(productId: number): Promise<ProductVariant[]> {
+    return await db.select().from(productVariants).where(eq(productVariants.productId, productId));
+  }
+
+  async getVariant(id: number): Promise<ProductVariant | undefined> {
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.id, id));
+    return variant;
+  }
+
+  async createProductVariant(variant: InsertProductVariant & { productId: number }): Promise<ProductVariant> {
+    const [newVariant] = await db.insert(productVariants).values(variant).returning();
+    return newVariant;
+  }
+
+  async updateProductVariant(id: number, updates: Partial<InsertProductVariant>): Promise<ProductVariant | undefined> {
+    const [updated] = await db.update(productVariants).set(updates).where(eq(productVariants.id, id)).returning();
+    return updated;
+  }
+
+  async deleteProductVariant(id: number): Promise<void> {
+    await db.delete(productVariants).where(eq(productVariants.id, id));
   }
 
   async getCategories(): Promise<string[]> {
@@ -180,29 +216,36 @@ export class DatabaseStorage implements IStorage {
     if (userId) {
       // Logged-in: only user's items
       rows = await db
-        .select({ cartItem: cartItems, product: products })
+        .select({ cartItem: cartItems, product: products, variant: productVariants })
         .from(cartItems)
         .where(eq(cartItems.userId, userId))
-        .leftJoin(products, eq(cartItems.productId, products.id));
+        .leftJoin(products, eq(cartItems.productId, products.id))
+        .leftJoin(productVariants, eq(cartItems.variantId, productVariants.id));
     } else {
       // Guest: session items not linked to any user
       rows = await db
-        .select({ cartItem: cartItems, product: products })
+        .select({ cartItem: cartItems, product: products, variant: productVariants })
         .from(cartItems)
         .where(and(eq(cartItems.sessionId, sessionId), isNull(cartItems.userId)))
-        .leftJoin(products, eq(cartItems.productId, products.id));
+        .leftJoin(products, eq(cartItems.productId, products.id))
+        .leftJoin(productVariants, eq(cartItems.variantId, productVariants.id));
     }
 
     return rows
-      .filter((r): r is { cartItem: CartItem; product: Product } => !!r.product)
-      .map(({ cartItem, product }) => ({ ...cartItem, product }));
+      .filter((r): r is { cartItem: CartItem; product: Product; variant: ProductVariant | null } => !!r.product)
+      .map(({ cartItem, product, variant }) => ({ ...cartItem, product, variant: variant ?? null }));
   }
 
   async addToCart(item: InsertCartItem & { userId?: number }): Promise<CartItem> {
+    // Même produit mais variante différente (taille/couleur) = ligne de panier distincte.
+    const variantMatch = item.variantId != null
+      ? eq(cartItems.variantId, item.variantId)
+      : isNull(cartItems.variantId);
+
     if (item.userId) {
-      // Logged-in: match by userId + productId
+      // Logged-in: match by userId + productId + variantId
       const [existing] = await db.select().from(cartItems)
-        .where(and(eq(cartItems.userId, item.userId), eq(cartItems.productId, item.productId)));
+        .where(and(eq(cartItems.userId, item.userId), eq(cartItems.productId, item.productId), variantMatch));
       if (existing) {
         const [updated] = await db.update(cartItems)
           .set({ quantity: existing.quantity + (item.quantity ?? 0) })
@@ -212,15 +255,16 @@ export class DatabaseStorage implements IStorage {
       }
       const [newItem] = await db.insert(cartItems).values({
         productId: item.productId,
+        variantId: item.variantId ?? null,
         quantity: item.quantity,
         sessionId: item.sessionId,
         userId: item.userId,
       }).returning();
       return newItem;
     } else {
-      // Guest: match by sessionId + productId where userId IS NULL
+      // Guest: match by sessionId + productId + variantId where userId IS NULL
       const [existing] = await db.select().from(cartItems)
-        .where(and(eq(cartItems.sessionId, item.sessionId), eq(cartItems.productId, item.productId), isNull(cartItems.userId)));
+        .where(and(eq(cartItems.sessionId, item.sessionId), eq(cartItems.productId, item.productId), variantMatch, isNull(cartItems.userId)));
       if (existing) {
         const [updated] = await db.update(cartItems)
           .set({ quantity: existing.quantity + (item.quantity ?? 0) })
@@ -230,6 +274,7 @@ export class DatabaseStorage implements IStorage {
       }
       const [newItem] = await db.insert(cartItems).values({
         productId: item.productId,
+        variantId: item.variantId ?? null,
         quantity: item.quantity,
         sessionId: item.sessionId,
         userId: null,
@@ -308,23 +353,42 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── ORDERS ───────────────────────────────────────────────────
-  async createOrder(order: InsertOrder, items: Omit<InsertOrderItem, "orderId">[]): Promise<Order> {
+  async createOrder(
+    order: InsertOrder,
+    items: (Omit<InsertOrderItem, "orderId"> & { variantId?: number | null })[],
+  ): Promise<Order> {
     return db.transaction(async (tx) => {
       const [newOrder] = await tx.insert(orders).values(order).returning();
       if (items.length > 0) {
         for (const item of items) {
-          const updated = await tx
-            .update(products)
-            .set({ stock: sql`${products.stock} - ${item.quantity}` })
-            .where(and(eq(products.id, item.productId), gte(products.stock, item.quantity)))
-            .returning({ id: products.id });
-          if (updated.length === 0) {
-            const error = new Error(`Stock insuffisant pour le produit ${item.productId}.`);
-            (error as Error & { status?: number }).status = 400;
-            throw error;
+          if (item.variantId != null) {
+            // Produit avec variante : on décrémente le stock de CETTE variante, pas du produit.
+            const updated = await tx
+              .update(productVariants)
+              .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
+              .where(and(eq(productVariants.id, item.variantId), gte(productVariants.stock, item.quantity)))
+              .returning({ id: productVariants.id });
+            if (updated.length === 0) {
+              const error = new Error(`Stock insuffisant pour cette taille/couleur du produit ${item.productId}.`);
+              (error as Error & { status?: number }).status = 400;
+              throw error;
+            }
+          } else {
+            const updated = await tx
+              .update(products)
+              .set({ stock: sql`${products.stock} - ${item.quantity}` })
+              .where(and(eq(products.id, item.productId), gte(products.stock, item.quantity)))
+              .returning({ id: products.id });
+            if (updated.length === 0) {
+              const error = new Error(`Stock insuffisant pour le produit ${item.productId}.`);
+              (error as Error & { status?: number }).status = 400;
+              throw error;
+            }
           }
         }
-        await tx.insert(orderItems).values(items.map(i => ({ ...i, orderId: newOrder.id })));
+        await tx.insert(orderItems).values(
+          items.map(({ variantId, ...i }) => ({ ...i, orderId: newOrder.id })),
+        );
       }
       return newOrder;
     });

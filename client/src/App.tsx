@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Footer } from "@/components/Footer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import ProductDetails from "@/pages/ProductDetails";
@@ -51,6 +52,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <div className="flex flex-col min-h-screen">
+          <ScrollToTop />
           <ErrorBoundary>
             <Router />
           </ErrorBoundary>
