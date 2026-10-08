@@ -226,6 +226,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── VARIANTES (taille / couleur) ────────────────────────────
+  app.get(api.products.variants.path, async (req, res) => {
+    const variants = await storage.getProductVariants(Number(req.params.id));
+    res.json(variants);
+  });
+
+  app.post(api.adminVariants.create.path, requireAdmin, async (req, res) => {
+    try {
+      const input = api.adminVariants.create.input.parse(req.body);
+      const variant = await storage.createProductVariant({ ...input, productId: Number(req.params.productId) });
+      res.status(201).json(variant);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      throw err;
+    }
+  });
+
+  app.patch(api.adminVariants.update.path, requireAdmin, async (req, res) => {
+    try {
+      const input = api.adminVariants.update.input.parse(req.body);
+      const variant = await storage.updateProductVariant(Number(req.params.id), input);
+      if (!variant) return res.status(404).json({ message: "Variante introuvable" });
+      res.json(variant);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      throw err;
+    }
+  });
+
+  app.delete(api.adminVariants.delete.path, requireAdmin, async (req, res) => {
+    await storage.deleteProductVariant(Number(req.params.id));
+    res.status(204).end();
+  });
+
   // ── CART ─────────────────────────────────────────────────────
   app.get(api.cart.list.path, async (req, res) => {
     const userId = req.session.userId;
@@ -326,7 +360,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       for (const item of cartItems) {
-        if ((item.product.stock ?? 0) < item.quantity) {
+        if (item.variant) {
+          const label = [item.variant.size, item.variant.color].filter(Boolean).join(" / ");
+          if (item.variant.stock < item.quantity) {
+            return res.status(400).json({ message: `Stock insuffisant pour ${item.product.name} (${label}). Disponible: ${item.variant.stock}, demandé: ${item.quantity}` });
+          }
+        } else if ((item.product.stock ?? 0) < item.quantity) {
           return res.status(400).json({ message: `Stock insuffisant pour ${item.product.name}. Disponible: ${item.product.stock}, demandé: ${item.quantity}` });
         }
       }
@@ -343,6 +382,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const orderItems = cartItems.map(item => ({
         productId: item.productId,
         productName: item.product.name,
+        size: item.variant?.size ?? null,
+        color: item.variant?.color ?? null,
+        variantId: item.variantId ?? null,
         quantity: item.quantity,
         price: item.product.price,
       }));

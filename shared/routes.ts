@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, users, products, cartItems, orders, wishlistItems } from './schema';
+import { insertUserSchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, insertProductVariantSchema, users, products, cartItems, orders, wishlistItems, productVariants } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -84,13 +84,47 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    variants: {
+      method: 'GET' as const,
+      path: '/api/products/:id/variants',
+      responses: {
+        200: z.array(z.custom<typeof productVariants.$inferSelect>()),
+      },
+    },
+  },
+  adminVariants: {
+    create: {
+      method: 'POST' as const,
+      path: '/api/admin/products/:productId/variants',
+      input: insertProductVariantSchema.omit({ productId: true }),
+      responses: {
+        201: z.custom<typeof productVariants.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/admin/variants/:id',
+      input: insertProductVariantSchema.omit({ productId: true }).partial(),
+      responses: {
+        200: z.custom<typeof productVariants.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/admin/variants/:id',
+      responses: {
+        204: z.undefined(),
+      },
+    },
   },
   cart: {
     list: {
       method: 'GET' as const,
       path: '/api/cart/:sessionId',
       responses: {
-        200: z.array(z.custom<typeof cartItems.$inferSelect & { product: typeof products.$inferSelect }>()),
+        200: z.array(z.custom<typeof cartItems.$inferSelect & { product: typeof products.$inferSelect; variant: typeof productVariants.$inferSelect | null }>()),
       },
     },
     add: {

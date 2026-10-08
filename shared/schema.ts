@@ -43,9 +43,21 @@ export const products = pgTable("products", {
   minOrderQty: integer("min_order_qty"), // null = vente normale, ≥ 2 = vente en gros
 });
 
+// Une "variante" représente une combinaison taille/couleur d'un produit, avec son
+// propre stock. Un produit sans variante garde simplement son stock habituel (products.stock).
+export const productVariants = pgTable("product_variants", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull(),
+  size: text("size"), // ex: "M", "42" (pointure) — null si le produit n'a pas de tailles
+  color: text("color"), // ex: "Bleu" — null si le produit n'a pas de couleurs
+  colorHex: text("color_hex"), // ex: "#1d4ed8", pour afficher une pastille de couleur (optionnel)
+  stock: integer("stock").notNull().default(0),
+});
+
 export const cartItems = pgTable("cart_items", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull(),
+  variantId: integer("variant_id"), // null si le produit n'a pas de variantes
   quantity: integer("quantity").notNull().default(1),
   sessionId: text("session_id").notNull(),
   userId: integer("user_id"),
@@ -80,6 +92,8 @@ export const orderItems = pgTable("order_items", {
   orderId: integer("order_id").notNull(),
   productId: integer("product_id").notNull(),
   productName: text("product_name"), // nom du produit au moment de la commande
+  size: text("size"), // taille choisie au moment de la commande, si applicable
+  color: text("color"), // couleur choisie au moment de la commande, si applicable
   quantity: integer("quantity").notNull(),
   price: numeric("price").notNull(),
 });
@@ -112,7 +126,16 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true 
   minOrderQty: z.number().int().min(1).optional().nullable(),
 });
 
-export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
+export const insertProductVariantSchema = createInsertSchema(productVariants).omit({ id: true }).extend({
+  size: z.string().trim().min(1).optional().nullable(),
+  color: z.string().trim().min(1).optional().nullable(),
+  colorHex: z.string().trim().optional().nullable(),
+  stock: z.number().int().min(0),
+});
+
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true }).extend({
+  variantId: z.number().int().optional().nullable(),
+});
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
 
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true, status: true, approvalStatus: true, rejectionReason: true }).extend({
@@ -123,6 +146,8 @@ export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, cre
 
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true }).extend({
   productName: z.string().optional(),
+  size: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
 });
 
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
@@ -138,6 +163,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type WishlistItem = typeof wishlistItems.$inferSelect;
@@ -151,5 +178,5 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 
-export type CartItemWithProduct = CartItem & { product: Product };
+export type CartItemWithProduct = CartItem & { product: Product; variant: ProductVariant | null };
 export type WishlistItemWithProduct = WishlistItem & { product: Product };

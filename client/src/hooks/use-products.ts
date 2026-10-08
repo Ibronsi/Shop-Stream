@@ -13,6 +13,19 @@ export function useProducts() {
   });
 }
 
+export function useProductVariants(productId: number) {
+  return useQuery({
+    queryKey: [api.products.variants.path, productId],
+    queryFn: async () => {
+      const url = buildUrl(api.products.variants.path, { id: productId });
+      const res = await apiFetch(url);
+      if (!res.ok) throw new Error("Failed to fetch variants");
+      return api.products.variants.responses[200].parse(await res.json());
+    },
+    enabled: !!productId,
+  });
+}
+
 export function useProduct(id: number) {
   return useQuery({
     queryKey: [api.products.get.path, id],
