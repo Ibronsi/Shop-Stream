@@ -13,6 +13,8 @@ type OrderItemDetail = {
   orderId: number;
   productId: number;
   productName?: string | null;
+  size?: string | null;
+  color?: string | null;
   quantity: number;
   price: string;
 };
@@ -24,7 +26,7 @@ function printInvoice(order: Order, items: OrderItemDetail[]) {
 
   const itemRows = items.map((item) => `
     <tr>
-      <td>${item.productName || `Produit #${item.productId}`}</td>
+      <td>${item.productName || `Produit #${item.productId}`}${[item.size, item.color].filter(Boolean).length ? ` (${[item.size, item.color].filter(Boolean).join(" · ")})` : ""}</td>
       <td style="text-align:center">${item.quantity}</td>
       <td style="text-align:right">${Number(item.price).toLocaleString("fr-FR")} CFA</td>
       <td style="text-align:right;font-weight:bold">${(Number(item.price) * item.quantity).toLocaleString("fr-FR")} CFA</td>
@@ -189,6 +191,9 @@ export default function OrderConfirmation() {
                 <div key={item.id} className="flex justify-between items-center py-2 border-b border-border/40 last:border-0">
                   <div>
                     <p className="font-medium text-foreground">{item.productName || `Produit #${item.productId}`}</p>
+                    {(item.size || item.color) && (
+                      <p className="text-sm text-muted-foreground">{[item.size, item.color].filter(Boolean).join(" · ")}</p>
+                    )}
                     <p className="text-sm text-muted-foreground">Qté : {item.quantity}</p>
                   </div>
                   <p className="font-semibold">

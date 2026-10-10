@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useSEO } from "@/hooks/use-seo";
-import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus, useUpdateProduct } from "@/hooks/use-admin";
-import { useProducts } from "@/hooks/use-products";
+import { useAdminStats, useAllOrders, useDeleteProduct, useUpdateOrderStatus, useUpdateProduct, useCreateVariant, useUpdateVariant, useDeleteVariant } from "@/hooks/use-admin";
+import { useProducts, useProductVariants } from "@/hooks/use-products";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -634,6 +634,118 @@ export default function AdminDashboard() {
   );
 }
 
+// ── GESTION DES VARIANTES (taille / couleur) ───────────────────────────────────
+function VariantsManager({ productId }: { productId: number }) {
+  const { data: variants = [], isLoading } = useProductVariants(productId);
+  const createVariant = useCreateVariant();
+  const updateVariant = useUpdateVariant();
+  const deleteVariant = useDeleteVariant();
+  const { toast } = useToast();
+
+  const [newSize, setNewSize] = useState("");
+  const [newColor, setNewColor] = useState("");
+  const [newColorHex, setNewColorHex] = useState("#000000");
+  const [newStock, setNewStock] = useState("0");
+
+  const handleAdd = () => {
+    if (!newSize.trim() && !newColor.trim()) {
+      toast({ title: "Renseignez au moins une taille ou une couleur", variant: "destructive" });
+      return;
+    }
+    createVariant.mutate(
+      {
+        productId,
+        data: {
+          size: newSize.trim() || null,
+          color: newColor.trim() || null,
+          colorHex: newColor.trim() ? newColorHex : null,
+          stock: parseInt(newStock) || 0,
+        },
+      },
+      {
+        onSuccess: () => {
+          setNewSize("");
+          setNewColor("");
+          setNewStock("0");
+        },
+        onError: () => toast({ title: "Erreur", description: "Impossible d'ajouter la variante", variant: "destructive" }),
+      }
+    );
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">Tailles / Couleurs (optionnel)</label>
+      <p className="text-xs text-muted-foreground mb-2">
+        Si vous ajoutez des variantes, le client devra choisir une taille et/ou une couleur avant d'acheter. Le stock se gère alors par variante, pas sur le produit.
+      </p>
+
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : variants.length > 0 ? (
+        <div className="space-y-2 mb-3">
+          {variants.map((v) => (
+            <div key={v.id} className="flex items-center gap-2 bg-secondary/40 rounded-md p-2">
+              <div className="flex-1 flex items-center gap-2 text-sm">
+                {v.colorHex && (
+                  <span className="h-4 w-4 rounded-full border border-border shrink-0" style={{ backgroundColor: v.colorHex }} />
+                )}
+                <span className="font-medium">{[v.size, v.color].filter(Boolean).join(" · ") || "—"}</span>
+              </div>
+              <Input
+                type="number"
+                min="0"
+                value={v.stock}
+                onChange={(e) => {
+                  const stock = parseInt(e.target.value) || 0;
+                  updateVariant.mutate({ id: v.id, productId, data: { stock } });
+                }}
+                className="w-20 h-8 text-sm"
+                data-testid={`input-variant-stock-${v.id}`}
+              />
+              <span className="text-xs text-muted-foreground">en stock</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => deleteVariant.mutate({ id: v.id, productId })}
+                data-testid={`button-delete-variant-${v.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-end gap-2 bg-secondary/20 rounded-md p-3">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Taille</label>
+          <Input value={newSize} onChange={(e) => setNewSize(e.target.value)} placeholder="M, 42..." className="w-24 h-9" data-testid="input-new-variant-size" />
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Couleur</label>
+          <Input value={newColor} onChange={(e) => setNewColor(e.target.value)} placeholder="Bleu..." className="w-28 h-9" data-testid="input-new-variant-color" />
+        </div>
+        {newColor.trim() && (
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">Teinte</label>
+            <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="h-9 w-12 rounded border border-input" />
+          </div>
+        )}
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Stock</label>
+          <Input type="number" min="0" value={newStock} onChange={(e) => setNewStock(e.target.value)} className="w-20 h-9" data-testid="input-new-variant-stock" />
+        </div>
+        <Button type="button" size="sm" onClick={handleAdd} disabled={createVariant.isPending} data-testid="button-add-variant">
+          <Plus className="h-4 w-4 mr-1" />
+          Ajouter
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── EDIT PRODUCT MODAL ────────────────────────────────────────────────────────
 function EditProductModal({
   product, onClose, onSave, saving, categoryList,
@@ -744,6 +856,7 @@ function EditProductModal({
                 data-testid="input-edit-min-order" />
               <p className="text-xs text-muted-foreground mt-1">Mettre ≥ 2 pour activer la vente en gros (ex: 10 pour minimum 10 unités).</p>
             </div>
+            <VariantsManager productId={product.id} />
             <div>
               <label className="block text-sm font-medium mb-1">Photo</label>
               <div className="flex items-center gap-3">

@@ -1,8 +1,9 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { type Product } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package } from "lucide-react";
 import { useAddToCart } from "@/hooks/use-cart";
+import { useProductVariants } from "@/hooks/use-products";
 import { useSession } from "@/hooks/use-session";
 import { assetUrl } from "@/lib/api";
 
@@ -13,12 +14,24 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const sessionId = useSession();
   const addToCart = useAddToCart();
+  const { data: variants = [] } = useProductVariants(product.id);
+  const [, navigate] = useLocation();
+  const hasVariants = variants.length > 0;
   const isWholesale = product.minOrderQty && product.minOrderQty >= 2;
   const minQty = isWholesale ? product.minOrderQty! : 1;
+  // Avec des variantes, le stock total du produit n'a pas de sens : on l'additionne ici.
+  const totalStock = hasVariants
+    ? variants.reduce((sum, v) => sum + v.stock, 0)
+    : (product.stock ?? 0);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (hasVariants) {
+      // Il faut choisir une taille/couleur : on envoie vers la fiche produit.
+      navigate(`/product/${product.id}`);
+      return;
+    }
     if (!sessionId) return;
     addToCart.mutate({ productId: product.id, quantity: minQty, sessionId });
   };
@@ -33,7 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          {(product.stock ?? 0) === 0 && (
+          {totalStock === 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="text-white font-bold text-lg">Rupture de stock</span>
             </div>
@@ -63,9 +76,13 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.description}
           </p>
           <div className="mb-3">
-            {(product.stock ?? 0) > 0 ? (
+            {hasVariants ? (
+              <span className="text-xs font-semibold text-muted-foreground">
+                Plusieurs tailles/couleurs disponibles
+              </span>
+            ) : totalStock > 0 ? (
               <span className="text-xs font-semibold text-green-600">
-                ✓ {product.stock ?? 0} en stock
+                ✓ {totalStock} en stock
               </span>
             ) : (
               <span className="text-xs font-semibold text-red-600">
@@ -76,11 +93,16 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="pt-2">
             <Button
               onClick={handleAddToCart}
-              disabled={addToCart.isPending || (product.stock ?? 0) === 0}
+              disabled={addToCart.isPending || totalStock === 0}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {addToCart.isPending ? (
                 "Ajout en cours..."
+              ) : hasVariants ? (
+                <>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Voir les options
+                </>
               ) : (
                 <>
                   <ShoppingCart className="mr-2 h-4 w-4" />

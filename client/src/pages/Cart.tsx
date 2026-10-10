@@ -90,6 +90,11 @@ export default function Cart() {
                         </Link>
                       </h3>
                       <p className="text-sm text-muted-foreground">{item.product.category}</p>
+                      {item.variant && (item.variant.size || item.variant.color) && (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {[item.variant.size, item.variant.color].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                     </div>
                     <p className="font-bold text-lg text-foreground">
                       {(Number(item.product.price) * item.quantity).toLocaleString("fr-FR")} CFA

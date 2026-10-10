@@ -147,6 +147,9 @@ function OrderItemsList({ orderId }: { orderId: number }) {
         <div key={item.id} className="flex justify-between items-center text-sm py-1.5 border-b border-border/30 last:border-0">
           <div>
             <span className="font-medium text-foreground">{item.productName || `Produit #${item.productId}`}</span>
+            {(item.size || item.color) && (
+              <span className="text-muted-foreground ml-2">({[item.size, item.color].filter(Boolean).join(" · ")})</span>
+            )}
             <span className="text-muted-foreground ml-2">× {item.quantity}</span>
           </div>
           <span className="font-semibold">{(Number(item.price) * item.quantity).toLocaleString("fr-FR")} CFA</span>

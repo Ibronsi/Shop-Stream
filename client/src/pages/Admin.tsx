@@ -132,7 +132,10 @@ export default function Admin() {
       { name: formData.name, description: formData.description, price: formData.price, imageUrl: formData.imageUrl, category: formData.category, rating: formData.rating, reviews: parseInt(formData.reviews), stock: parseInt(formData.stock), minOrderQty: minQty && minQty >= 2 ? minQty : null },
       {
         onSuccess: () => {
-          toast({ title: "Succès", description: "Produit ajouté avec succès" });
+          toast({
+            title: "Succès",
+            description: "Produit ajouté. Pour ajouter des tailles/couleurs, modifiez-le depuis le tableau de bord admin.",
+          });
           setFormData({ name: "", description: "", price: "", imageUrl: "", category: categoryList[0] || "Électronique", rating: "4.5", reviews: "0", stock: "100", minOrderQty: "" });
           setImagePreview("");
           if (fileInputRef.current) fileInputRef.current.value = "";

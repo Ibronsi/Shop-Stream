@@ -368,6 +368,11 @@ export default function Checkout() {
                     </div>
                     <div className="flex-1 text-sm">
                       <p className="font-semibold text-foreground">{item.product.name}</p>
+                      {item.variant && (item.variant.size || item.variant.color) && (
+                        <p className="text-muted-foreground">
+                          {[item.variant.size, item.variant.color].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                       <p className="text-muted-foreground">Qté: {item.quantity}</p>
                     </div>
                     <p className="font-semibold text-sm">

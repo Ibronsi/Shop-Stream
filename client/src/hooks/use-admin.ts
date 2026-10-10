@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { InsertProduct, Order, Product } from "@shared/schema";
+import type { InsertProduct, InsertProductVariant, Order, Product } from "@shared/schema";
 import { apiFetch } from "@/lib/api";
 
 export function useCreateProduct() {
@@ -64,6 +64,40 @@ export function useDeleteProduct() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.products.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.admin.stats.path] });
+    },
+  });
+}
+
+export function useCreateVariant() {
+  return useMutation({
+    mutationFn: async ({ productId, data }: { productId: number; data: Omit<InsertProductVariant, "productId"> }) => {
+      return apiRequest("POST", buildUrl(api.adminVariants.create.path, { productId }), data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [api.products.variants.path, variables.productId] });
+    },
+  });
+}
+
+export function useUpdateVariant() {
+  return useMutation({
+    mutationFn: async ({ id, productId, data }: { id: number; productId: number; data: Partial<InsertProductVariant> }) => {
+      return apiRequest("PATCH", buildUrl(api.adminVariants.update.path, { id }), data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [api.products.variants.path, variables.productId] });
+    },
+  });
+}
+
+export function useDeleteVariant() {
+  return useMutation({
+    mutationFn: async ({ id }: { id: number; productId: number }) => {
+      const response = await apiFetch(buildUrl(api.adminVariants.delete.path, { id }), { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete variant");
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [api.products.variants.path, variables.productId] });
     },
   });
 }

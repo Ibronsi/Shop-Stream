@@ -1,10 +1,10 @@
 import { useRoute } from "wouter";
-import { useProduct } from "@/hooks/use-products";
+import { useProduct, useProductVariants } from "@/hooks/use-products";
 import { useSEO } from "@/hooks/use-seo";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShoppingCart, ArrowLeft, ShieldCheck, Truck, Clock, Package } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { useAddToCart } from "@/hooks/use-cart";
 import { useSession } from "@/hooks/use-session";
@@ -14,6 +14,43 @@ export default function ProductDetails() {
   const [, params] = useRoute("/product/:id");
   const id = params ? parseInt(params.id) : 0;
   const { data: product, isLoading, error } = useProduct(id);
+  const { data: variants = [] } = useProductVariants(id);
+
+  // Les tailles et couleurs disponibles, déduites des variantes du produit.
+  const sizes = useMemo(
+    () => Array.from(new Set(variants.map((v) => v.size).filter((s): s is string => !!s))),
+    [variants],
+  );
+  const colors = useMemo(
+    () =>
+      Array.from(new Map(variants.filter((v) => v.color).map((v) => [v.color, v.colorHex])).entries()),
+    [variants],
+  );
+  const hasVariants = variants.length > 0;
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  // Présélectionne automatiquement quand il n'y a qu'un seul choix possible.
+  useEffect(() => {
+    if (sizes.length === 1) setSelectedSize(sizes[0]);
+  }, [sizes]);
+  useEffect(() => {
+    if (colors.length === 1) setSelectedColor(colors[0][0]);
+  }, [colors]);
+
+  const selectedVariant = useMemo(() => {
+    if (!hasVariants) return null;
+    return (
+      variants.find(
+        (v) =>
+          (sizes.length === 0 || v.size === selectedSize) &&
+          (colors.length === 0 || v.color === selectedColor),
+      ) ?? null
+    );
+  }, [variants, hasVariants, sizes, colors, selectedSize, selectedColor]);
+
+  const variantSelectionIncomplete =
+    hasVariants && ((sizes.length > 0 && !selectedSize) || (colors.length > 0 && !selectedColor));
 
   useSEO({
     title: product ? product.name : "Produit",
@@ -29,13 +66,17 @@ export default function ProductDetails() {
 
   const handleAddToCart = () => {
     if (!product || !sessionId) return;
+    if (variantSelectionIncomplete) return;
     const qty = isWholesale ? Math.max(quantity, minQty) : quantity;
     addToCart.mutate({
       productId: product.id,
+      variantId: selectedVariant?.id ?? null,
       quantity: qty,
       sessionId,
     });
   };
+
+  const effectiveStock = hasVariants ? (selectedVariant?.stock ?? 0) : (product?.stock ?? 0);
 
   if (isLoading) {
     return (
@@ -101,6 +142,69 @@ export default function ProductDetails() {
               </div>
             )}
 
+            {/* Sélecteur de taille */}
+            {sizes.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">Taille</label>
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`h-10 min-w-10 px-3 rounded-md border text-sm font-medium transition-colors ${
+                        selectedSize === size
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background text-foreground hover:border-primary"
+                      }`}
+                      data-testid={`button-size-${size}`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sélecteur de couleur */}
+            {colors.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-foreground mb-2">Couleur</label>
+                <div className="flex flex-wrap gap-2">
+                  {colors.map(([color, hex]) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      title={color ?? undefined}
+                      className={`h-10 px-3 rounded-md border text-sm font-medium transition-colors flex items-center gap-2 ${
+                        selectedColor === color
+                          ? "border-primary bg-primary/10"
+                          : "border-input bg-background hover:border-primary"
+                      }`}
+                      data-testid={`button-color-${color}`}
+                    >
+                      {hex && (
+                        <span
+                          className="h-4 w-4 rounded-full border border-border shrink-0"
+                          style={{ backgroundColor: hex }}
+                        />
+                      )}
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {variantSelectionIncomplete && (
+              <p className="text-sm text-amber-600 mb-4">
+                Choisissez {sizes.length > 0 && !selectedSize ? "une taille" : ""}
+                {sizes.length > 0 && !selectedSize && colors.length > 0 && !selectedColor ? " et " : ""}
+                {colors.length > 0 && !selectedColor ? "une couleur" : ""} avant de continuer.
+              </p>
+            )}
+
             {/* Sélecteur de quantité */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-foreground mb-2">Quantité</label>
@@ -109,25 +213,27 @@ export default function ProductDetails() {
                   onClick={() => setQuantity((q) => Math.max(minQty, q - 1))}
                   disabled={quantity <= minQty}
                   data-testid="button-qty-minus">−</Button>
-                <input type="number" value={quantity} min={minQty} max={product.stock ?? 0}
+                <input type="number" value={quantity} min={minQty} max={effectiveStock}
                   onChange={(e) => setQuantity(Math.max(minQty, parseInt(e.target.value) || minQty))}
                   className="w-20 h-10 text-center border border-input rounded-md bg-background text-foreground"
                   data-testid="input-quantity"
                 />
                 <Button type="button" variant="outline" size="icon" className="h-10 w-10"
-                  onClick={() => setQuantity((q) => Math.min(product.stock ?? 0, q + 1))}
-                  disabled={quantity >= (product.stock ?? 0)}
+                  onClick={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
+                  disabled={quantity >= effectiveStock}
                   data-testid="button-qty-plus">+</Button>
               </div>
             </div>
 
             {/* Stock Status */}
             <div className="mb-8">
-              {(product.stock ?? 0) > 0 ? (
+              {variantSelectionIncomplete ? (
+                <span className="text-sm text-muted-foreground">Sélectionnez une variante pour voir le stock</span>
+              ) : effectiveStock > 0 ? (
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-green-500"></div>
                   <span className="text-sm font-semibold text-green-600">
-                    {product.stock ?? 0} en stock
+                    {effectiveStock} en stock
                   </span>
                 </div>
               ) : (
@@ -147,7 +253,7 @@ export default function ProductDetails() {
             <div className="flex gap-4 mb-10">
               <Button 
                 onClick={handleAddToCart}
-                disabled={addToCart.isPending || (product.stock ?? 0) === 0}
+                disabled={addToCart.isPending || variantSelectionIncomplete || effectiveStock === 0}
                 size="lg"
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-lg font-semibold rounded-xl shadow-lg shadow-primary/20"
                 data-testid="button-add-to-cart"
