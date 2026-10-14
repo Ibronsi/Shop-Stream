@@ -3,7 +3,7 @@ import { useProduct, useProductVariants } from "@/hooks/use-products";
 import { useSEO } from "@/hooks/use-seo";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Loader2, ShoppingCart, ArrowLeft, ShieldCheck, Truck, Clock, Package } from "lucide-react";
+import { Loader2, ShoppingCart, ArrowLeft, Truck, Package } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { useAddToCart } from "@/hooks/use-cart";
@@ -267,18 +267,11 @@ export default function ProductDetails() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 border-t border-border">
-              <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
+            <div className="pt-8 border-t border-border">
+              <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl max-w-xs mx-auto">
                 <Truck className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">Livraison gratuite</span>
-              </div>
-              <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
-                <ShieldCheck className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">Garantie 2 ans</span>
-              </div>
-              <div className="flex flex-col items-center text-center p-4 bg-secondary/30 rounded-xl">
-                <Clock className="h-6 w-6 text-primary mb-2" />
-                <span className="text-sm font-semibold">Retour 30 jours</span>
+                <span className="text-sm font-semibold">Livraison disponible</span>
+                <span className="text-xs text-muted-foreground mt-1">Au choix à la commande : livré ou retrait en boutique</span>
               </div>
             </div>
           </div>

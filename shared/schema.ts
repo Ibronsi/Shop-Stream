@@ -77,7 +77,8 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   approvalStatus: text("approval_status").notNull().default("pending"),
   email: text("email").notNull(),
-  address: text("address").notNull(),
+  address: text("address"), // vide si le client choisit le retrait en boutique (pas de livraison)
+  wantsDelivery: boolean("wants_delivery").notNull().default(true),
   paymentMethod: text("payment_method").notNull().default("delivery"),
   paymentDetails: text("payment_details"),
   rejectionReason: text("rejection_reason"),
@@ -140,6 +141,8 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: tru
 export const insertWishlistItemSchema = createInsertSchema(wishlistItems).omit({ id: true, createdAt: true });
 
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true, status: true, approvalStatus: true, rejectionReason: true }).extend({
+  address: z.string().optional().nullable(), // requis seulement si wantsDelivery est vrai (vérifié côté formulaire client)
+  wantsDelivery: z.boolean().default(true),
   paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
   promoCode: z.string().optional(),
   discount: z.string().optional(),

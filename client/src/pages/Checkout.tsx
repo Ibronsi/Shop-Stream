@@ -19,12 +19,26 @@ import { apiFetch, assetUrl } from "@/lib/api";
 
 const checkoutSchema = z.object({
   email: z.string().email("Veuillez entrer une adresse email valide"),
-  address: z.string().min(5, "L'adresse doit contenir au moins 5 caractères"),
-  city: z.string().min(2, "La ville est obligatoire"),
-  quartier: z.string().min(2, "Le quartier est obligatoire"),
+  wantsDelivery: z.boolean().default(true),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  quartier: z.string().optional(),
   name: z.string().min(2, "Le nom complet est obligatoire"),
   phone: z.string().min(8, "Le numéro de téléphone est obligatoire"),
   paymentMethod: z.enum(["delivery", "mynita", "amanata"]).default("delivery"),
+}).superRefine((data, ctx) => {
+  // L'adresse, le quartier et la ville ne sont obligatoires que si le client veut être livré.
+  if (data.wantsDelivery) {
+    if (!data.address || data.address.length < 5) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "L'adresse doit contenir au moins 5 caractères", path: ["address"] });
+    }
+    if (!data.city || data.city.length < 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La ville est obligatoire", path: ["city"] });
+    }
+    if (!data.quartier || data.quartier.length < 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Le quartier est obligatoire", path: ["quartier"] });
+    }
+  }
 });
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
@@ -51,6 +65,7 @@ export default function Checkout() {
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
       email: "",
+      wantsDelivery: true,
       address: "",
       city: "",
       quartier: "",
@@ -59,6 +74,8 @@ export default function Checkout() {
       paymentMethod: "delivery",
     },
   });
+
+  const wantsDelivery = form.watch("wantsDelivery");
 
   // Pré-remplir le formulaire avec les infos du compte connecté
   useEffect(() => {
@@ -143,7 +160,10 @@ export default function Checkout() {
     createOrder.mutate({
       sessionId,
       email: data.email,
-      address: `${data.name}\nTél: ${data.phone}\n${data.address}, ${data.quartier}\n${data.city}`,
+      wantsDelivery: data.wantsDelivery,
+      address: data.wantsDelivery
+        ? `${data.name}\nTél: ${data.phone}\n${data.address}, ${data.quartier}\n${data.city}`
+        : `${data.name}\nTél: ${data.phone}\nRetrait en boutique (pas de livraison)`,
       total: total.toString(),
       paymentMethod: data.paymentMethod,
       paymentDetails,
@@ -260,45 +280,82 @@ export default function Checkout() {
 
                 <FormField
                   control={form.control}
-                  name="city"
+                  name="wantsDelivery"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ville</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Niamey" {...field} className="h-11 rounded-lg" data-testid="input-city" />
-                      </FormControl>
+                      <FormLabel>Livraison</FormLabel>
+                      <div className="space-y-3">
+                        <div
+                          className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30"
+                          onClick={() => field.onChange(true)}
+                        >
+                          <input type="radio" checked={field.value === true} onChange={() => field.onChange(true)} className="cursor-pointer" data-testid="radio-wants-delivery" />
+                          <div>
+                            <p className="font-medium">Je veux être livré(e)</p>
+                            <p className="text-sm text-muted-foreground">Renseignez votre adresse ci-dessous</p>
+                          </div>
+                        </div>
+                        <div
+                          className="flex items-center gap-3 p-4 border border-border rounded-lg cursor-pointer hover:bg-secondary/30"
+                          onClick={() => field.onChange(false)}
+                        >
+                          <input type="radio" checked={field.value === false} onChange={() => field.onChange(false)} className="cursor-pointer" data-testid="radio-no-delivery" />
+                          <div>
+                            <p className="font-medium">Je récupère ma commande moi-même</p>
+                            <p className="text-sm text-muted-foreground">Pas besoin d'adresse, retrait sur place</p>
+                          </div>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="quartier"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quartier</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Plateau, Yantala, Koira Kano..." {...field} className="h-11 rounded-lg" data-testid="input-quartier" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {wantsDelivery && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ville</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Niamey" {...field} className="h-11 rounded-lg" data-testid="input-city" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Adresse précise / Repère</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Près du marché, rue 5..." {...field} className="h-11 rounded-lg" data-testid="input-address" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="quartier"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quartier</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Plateau, Yantala, Koira Kano..." {...field} className="h-11 rounded-lg" data-testid="input-quartier" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adresse précise / Repère</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Près du marché, rue 5..." {...field} className="h-11 rounded-lg" data-testid="input-address" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
 
                 <FormField
                   control={form.control}
@@ -444,7 +501,7 @@ export default function Checkout() {
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Livraison</span>
-                  <span className="text-primary font-medium">Gratuite</span>
+                  <span className="text-primary font-medium">{wantsDelivery ? "Gratuite" : "Retrait en boutique"}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-2 text-primary">
                   <span>Total</span>
