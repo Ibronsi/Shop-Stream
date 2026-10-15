@@ -9,6 +9,7 @@ import { useSession } from "@/hooks/use-session";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useState } from "react";
 
 type NavItem = {
@@ -90,6 +91,8 @@ export function Navbar() {
 
           {/* Right icons */}
           <div className="flex items-center gap-1">
+            {currentUser && <NotificationBell />}
+
             {/* Cart */}
             <Link href="/cart" className="relative p-2 text-foreground hover:text-primary transition-colors" data-testid="link-cart">
               <ShoppingCart className="h-6 w-6" />

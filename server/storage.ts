@@ -9,6 +9,7 @@ import {
   wishlistItems,
   categories,
   promoCodes,
+  notifications,
   type User,
   type InsertUser,
   type Product,
@@ -28,6 +29,8 @@ import {
   type Category,
   type PromoCode,
   type InsertPromoCode,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 import { eq, and, ilike, or, isNull, gte, sql, desc, type SQL } from "drizzle-orm";
 import * as bcrypt from "bcrypt";
@@ -53,6 +56,13 @@ export interface IStorage {
   createProductVariant(variant: InsertProductVariant & { productId: number }): Promise<ProductVariant>;
   updateProductVariant(id: number, updates: Partial<InsertProductVariant>): Promise<ProductVariant | undefined>;
   deleteProductVariant(id: number): Promise<void>;
+
+  // Notifications
+  getNotifications(userId: number): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  notifyAdmins(message: string, link?: string): Promise<void>;
+  markNotificationRead(id: number, userId: number): Promise<Notification | undefined>;
+  markAllNotificationsRead(userId: number): Promise<void>;
   getCategories(): Promise<string[]>;
   decrementProductStock(productId: number, quantity: number): Promise<boolean>;
 
@@ -196,6 +206,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProductVariant(id: number): Promise<void> {
     await db.delete(productVariants).where(eq(productVariants.id, id));
+  }
+
+  async getNotifications(userId: number): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.id))
+      .limit(50);
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async notifyAdmins(message: string, link?: string): Promise<void> {
+    const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+    if (admins.length === 0) return;
+    await db.insert(notifications).values(admins.map((a) => ({ userId: a.id, message, link: link ?? null })));
+  }
+
+  async markNotificationRead(id: number, userId: number): Promise<Notification | undefined> {
+    const [updated] = await db
+      .update(notifications)
+      .set({ read: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async markAllNotificationsRead(userId: number): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
   }
 
   async getCategories(): Promise<string[]> {

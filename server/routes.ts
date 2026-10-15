@@ -417,6 +417,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       };
       const order = await storage.createOrder({ ...input, promoCode, discount }, orderItems);
 
+      // Prévient tous les admins qu'une nouvelle commande vient d'arriver.
+      await storage.notifyAdmins(
+        `Nouvelle commande #${order.id} de ${order.email} — ${Number(order.total).toLocaleString("fr-FR")} FCFA`,
+        "/admin",
+      );
+
       if (validPromo) {
         await storage.incrementPromoCodeUses(validPromo.id);
       }
@@ -481,12 +487,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(204).send();
   });
 
+  const STATUS_LABELS: Record<string, string> = {
+    pending: "en attente",
+    accepted: "acceptée",
+    preparing: "en préparation",
+    ready: "prête",
+    delivered: "livrée",
+    rejected: "refusée",
+  };
+
   app.patch(api.admin.updateOrderStatus.path, requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const input = api.admin.updateOrderStatus.input.parse(req.body);
       const order = await storage.updateOrderStatus(id, input.status);
       if (!order) return res.status(404).json({ message: 'Commande introuvable' });
+
+      // Prévient le client (s'il a un compte) que le statut de sa commande a changé.
+      const customer = await storage.getUserByEmail(order.email);
+      if (customer) {
+        await storage.createNotification({
+          userId: customer.id,
+          message: `Votre commande #${order.id} est maintenant ${STATUS_LABELS[input.status] ?? input.status}.`,
+          link: "/orders",
+        });
+      }
+
       res.json(order);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
@@ -636,6 +662,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
     const allOrders = await storage.getAllOrders();
     res.json(allOrders.reverse());
+  });
+
+  // ── NOTIFICATIONS ────────────────────────────────────────────
+  app.get(api.notifications.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getNotifications(req.session.userId!);
+    res.json(list);
+  });
+
+  app.patch(api.notifications.markRead.path, requireAuth, async (req, res) => {
+    const updated = await storage.markNotificationRead(Number(req.params.id), req.session.userId!);
+    if (!updated) return res.status(404).json({ message: "Notification introuvable" });
+    res.json(updated);
+  });
+
+  app.post(api.notifications.markAllRead.path, requireAuth, async (req, res) => {
+    await storage.markAllNotificationsRead(req.session.userId!);
+    res.status(204).end();
   });
 
   return httpServer;

@@ -99,6 +99,18 @@ export const orderItems = pgTable("order_items", {
   price: numeric("price").notNull(),
 });
 
+// Notifications dans le site : une ligne par destinataire (client ou admin).
+// Une "nouvelle commande" génère une ligne par admin ; un changement de statut
+// génère une ligne pour le client concerné (s'il était connecté à la commande).
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  message: text("message").notNull(),
+  link: text("link"), // ex: "/orders" ou "/admin" — optionnel
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const promoCodes = pgTable("promo_codes", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
@@ -162,6 +174,8 @@ export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: t
   maxUses: z.number().optional(),
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, read: true });
+
 // ── TYPES ─────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -181,6 +195,8 @@ export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product; variant: ProductVariant | null };
 export type WishlistItemWithProduct = WishlistItem & { product: Product };
