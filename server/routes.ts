@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
 import { pool } from "./db";
+import { getPublicKey, sendPushToUser, sendPushToUsers } from "./push";
 
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -417,11 +418,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       };
       const order = await storage.createOrder({ ...input, promoCode, discount }, orderItems);
 
-      // Prévient tous les admins qu'une nouvelle commande vient d'arriver.
-      await storage.notifyAdmins(
-        `Nouvelle commande #${order.id} de ${order.email} — ${Number(order.total).toLocaleString("fr-FR")} FCFA`,
-        "/admin",
-      );
+      // Prévient tous les admins qu'une nouvelle commande vient d'arriver (dans le site + push).
+      const newOrderMessage = `Nouvelle commande #${order.id} de ${order.email} — ${Number(order.total).toLocaleString("fr-FR")} FCFA`;
+      await storage.notifyAdmins(newOrderMessage, "/admin");
+      const adminIds = await storage.getAdminUserIds();
+      sendPushToUsers(adminIds, { title: "Nouvelle commande", body: newOrderMessage, url: "/admin" }).catch(() => {});
 
       if (validPromo) {
         await storage.incrementPromoCodeUses(validPromo.id);
@@ -503,14 +504,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const order = await storage.updateOrderStatus(id, input.status);
       if (!order) return res.status(404).json({ message: 'Commande introuvable' });
 
-      // Prévient le client (s'il a un compte) que le statut de sa commande a changé.
+      // Prévient le client (s'il a un compte) que le statut de sa commande a changé (dans le site + push).
       const customer = await storage.getUserByEmail(order.email);
       if (customer) {
-        await storage.createNotification({
-          userId: customer.id,
-          message: `Votre commande #${order.id} est maintenant ${STATUS_LABELS[input.status] ?? input.status}.`,
-          link: "/orders",
-        });
+        const statusMessage = `Votre commande #${order.id} est maintenant ${STATUS_LABELS[input.status] ?? input.status}.`;
+        await storage.createNotification({ userId: customer.id, message: statusMessage, link: "/orders" });
+        sendPushToUser(customer.id, { title: "Commande mise à jour", body: statusMessage, url: "/orders" }).catch(() => {});
       }
 
       res.json(order);
@@ -678,6 +677,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post(api.notifications.markAllRead.path, requireAuth, async (req, res) => {
     await storage.markAllNotificationsRead(req.session.userId!);
+    res.status(204).end();
+  });
+
+  // ── NOTIFICATIONS PUSH (appareil, même site fermé) ──────────
+  app.get(api.push.publicKey.path, (_req, res) => {
+    res.json({ publicKey: getPublicKey() });
+  });
+
+  app.post(api.push.subscribe.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.push.subscribe.input.parse(req.body);
+      await storage.savePushSubscription({ ...input, userId: req.session.userId! });
+      res.status(201).json({ message: "Abonné aux notifications." });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.post(api.push.unsubscribe.path, requireAuth, async (req, res) => {
+    const { endpoint } = z.object({ endpoint: z.string() }).parse(req.body);
+    await storage.deletePushSubscription(endpoint);
     res.status(204).end();
   });
 

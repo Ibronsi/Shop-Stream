@@ -10,6 +10,7 @@ import {
   categories,
   promoCodes,
   notifications,
+  pushSubscriptions,
   type User,
   type InsertUser,
   type Product,
@@ -31,6 +32,8 @@ import {
   type InsertPromoCode,
   type Notification,
   type InsertNotification,
+  type PushSubscription,
+  type InsertPushSubscription,
 } from "@shared/schema";
 import { eq, and, ilike, or, isNull, gte, sql, desc, type SQL } from "drizzle-orm";
 import * as bcrypt from "bcrypt";
@@ -63,6 +66,12 @@ export interface IStorage {
   notifyAdmins(message: string, link?: string): Promise<void>;
   markNotificationRead(id: number, userId: number): Promise<Notification | undefined>;
   markAllNotificationsRead(userId: number): Promise<void>;
+
+  // Notifications "push" (appareil)
+  getPushSubscriptions(userId: number): Promise<PushSubscription[]>;
+  savePushSubscription(sub: InsertPushSubscription & { userId: number }): Promise<PushSubscription>;
+  deletePushSubscription(endpoint: string): Promise<void>;
+  getAdminUserIds(): Promise<number[]>;
   getCategories(): Promise<string[]>;
   decrementProductStock(productId: number, quantity: number): Promise<boolean>;
 
@@ -222,10 +231,15 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async notifyAdmins(message: string, link?: string): Promise<void> {
+  async getAdminUserIds(): Promise<number[]> {
     const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
-    if (admins.length === 0) return;
-    await db.insert(notifications).values(admins.map((a) => ({ userId: a.id, message, link: link ?? null })));
+    return admins.map((a) => a.id);
+  }
+
+  async notifyAdmins(message: string, link?: string): Promise<void> {
+    const adminIds = await this.getAdminUserIds();
+    if (adminIds.length === 0) return;
+    await db.insert(notifications).values(adminIds.map((id) => ({ userId: id, message, link: link ?? null })));
   }
 
   async markNotificationRead(id: number, userId: number): Promise<Notification | undefined> {
@@ -239,6 +253,28 @@ export class DatabaseStorage implements IStorage {
 
   async markAllNotificationsRead(userId: number): Promise<void> {
     await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
+  }
+
+  async getPushSubscriptions(userId: number): Promise<PushSubscription[]> {
+    return await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async savePushSubscription(sub: InsertPushSubscription & { userId: number }): Promise<PushSubscription> {
+    const [existing] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint));
+    if (existing) {
+      const [updated] = await db
+        .update(pushSubscriptions)
+        .set({ userId: sub.userId, p256dh: sub.p256dh, auth: sub.auth })
+        .where(eq(pushSubscriptions.endpoint, sub.endpoint))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(pushSubscriptions).values(sub).returning();
+    return created;
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
   }
 
   async getCategories(): Promise<string[]> {

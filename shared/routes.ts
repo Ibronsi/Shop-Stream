@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, insertProductVariantSchema, users, products, cartItems, orders, wishlistItems, productVariants, notifications } from './schema';
+import { insertUserSchema, insertProductSchema, insertCartItemSchema, insertOrderSchema, insertWishlistItemSchema, insertProductVariantSchema, insertPushSubscriptionSchema, users, products, cartItems, orders, wishlistItems, productVariants, notifications } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -350,6 +350,32 @@ export const api = {
     markAllRead: {
       method: 'POST' as const,
       path: '/api/notifications/read-all',
+      responses: {
+        204: z.undefined(),
+      },
+    },
+  },
+  push: {
+    publicKey: {
+      method: 'GET' as const,
+      path: '/api/push/public-key',
+      responses: {
+        200: z.object({ publicKey: z.string().nullable() }),
+      },
+    },
+    subscribe: {
+      method: 'POST' as const,
+      path: '/api/push/subscribe',
+      input: insertPushSubscriptionSchema,
+      responses: {
+        201: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+    unsubscribe: {
+      method: 'POST' as const,
+      path: '/api/push/unsubscribe',
+      input: z.object({ endpoint: z.string() }),
       responses: {
         204: z.undefined(),
       },

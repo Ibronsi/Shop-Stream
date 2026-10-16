@@ -99,6 +99,17 @@ export const orderItems = pgTable("order_items", {
   price: numeric("price").notNull(),
 });
 
+// Un appareil (téléphone/ordinateur) qui a accepté de recevoir les notifications
+// "comme une application", même site fermé. Un utilisateur peut avoir plusieurs appareils.
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Notifications dans le site : une ligne par destinataire (client ou admin).
 // Une "nouvelle commande" génère une ligne par admin ; un changement de statut
 // génère une ligne pour le client concerné (s'il était connecté à la commande).
@@ -176,6 +187,8 @@ export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: t
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, read: true });
 
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true, userId: true });
+
 // ── TYPES ─────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -197,6 +210,8 @@ export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 
 export type CartItemWithProduct = CartItem & { product: Product; variant: ProductVariant | null };
 export type WishlistItemWithProduct = WishlistItem & { product: Product };

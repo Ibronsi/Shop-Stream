@@ -1,10 +1,11 @@
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, BellPlus } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/hooks/use-notifications";
+import { usePush } from "@/hooks/use-push";
 
 function timeAgo(dateStr: string | Date | null) {
   if (!dateStr) return "";
@@ -23,6 +24,7 @@ export function NotificationBell() {
   const { data: notifications = [] } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const push = usePush();
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -57,6 +59,26 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
+        {push.status === "default" && (
+          <div className="p-3 border-b border-border bg-primary/5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-8"
+              onClick={() => push.subscribe()}
+              disabled={push.loading}
+              data-testid="button-enable-push"
+            >
+              <BellPlus className="h-3 w-3 mr-1.5" />
+              Activer les notifications sur cet appareil
+            </Button>
+          </div>
+        )}
+        {push.status === "denied" && (
+          <p className="text-xs text-muted-foreground p-3 border-b border-border">
+            Notifications bloquées pour ce site — autorisez-les dans les réglages de votre navigateur pour les recevoir même site fermé.
+          </p>
+        )}
         <ScrollArea className="max-h-80">
           {notifications.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8 px-4">
